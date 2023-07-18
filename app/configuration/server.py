@@ -3,10 +3,14 @@ from app.configuration.routes import __routes__
 # from app.iternal.events import events
 from app.iternal.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
+import asyncio
+
 DATABASE_URL = settings.DATABASE_URL
 
 def startup_event(app) -> AsyncIOMotorClient:
-    app.state.mongodb = AsyncIOMotorClient(DATABASE_URL)
+    client = AsyncIOMotorClient(DATABASE_URL)
+    client.get_io_loop = asyncio.get_event_loop
+    app.state.mongodb = client
     print("startup_event")
     
 def shutdown_event(app):
@@ -20,7 +24,7 @@ class Server:
         self.__app = app
         self.__register_routs(app)
         self.__register_events(app)
-        self.__app.state.mongodb = AsyncIOMotorClient(DATABASE_URL)
+        startup_event(app)
 
 
     def get_app(self) -> FastAPI:
