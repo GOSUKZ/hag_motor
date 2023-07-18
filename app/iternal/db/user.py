@@ -1,27 +1,33 @@
-from .db import database
 from ..models.user import User, UpdateUser;
 from bson.objectid import ObjectId
 
-user_colection = database.get_collection("user")
 
-async def addUser(session, user : User):
-    user = await user_colection.insert_one(user, session=session)
-    user = await user_colection.find_one({"_id": ObjectId(user.inserted_id)}, session=session)
+async def addUser(database, user : User):
+    user_colection = database.get_collection("user")
+    
+    user = await user_colection.insert_one(user)
+    user = await user_colection.find_one({"_id": ObjectId(user.inserted_id)})
     if user:
         return user
 
-async def getAllUsers(session):
+async def getAllUsers(database):
+    user_colection = database.get_collection("user")
+
     users = []
-    async for user in user_colection.find(session=session):
+    async for user in user_colection.find():
         users.append(user)
     return users
 
-async def delUser(session, id: str):
-    user = await user_colection.find_one({"_id": ObjectId(id)}, session=session)
+async def delUser(database, id: str):
+    user_colection = database.get_collection("user")
+
+    user = await user_colection.find_one({"_id": ObjectId(id)})
     if user:
-        await user_colection.delete_one({"_id": ObjectId(id)}, session=session)
+        await user_colection.delete_one({"_id": ObjectId(id)})
         return user
     
-async def updateUser(session, user: UpdateUser):
-    old_user = await user_colection.find_one_and_update({"_id": ObjectId(user.get('id'))}, {"$set": user}, session=session)
+async def updateUser(database, user: UpdateUser):
+    user_colection = database.get_collection("user")
+
+    old_user = await user_colection.find_one_and_update({"_id": ObjectId(user.get('id'))}, {"$set": user})
     return old_user
