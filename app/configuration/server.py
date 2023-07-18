@@ -20,6 +20,7 @@ class Server:
         self.__app = app
         self.__register_routs(app)
         self.__register_events(app)
+        self.__app.state.mongodb = AsyncIOMotorClient(DATABASE_URL)
 
 
     def get_app(self) -> FastAPI:
@@ -27,7 +28,7 @@ class Server:
 
     @staticmethod
     def __register_events(app):
-        app.on_event("startup")(lambda: startup_event(app))
+        # app.on_event("startup")(lambda: startup_event(app))
         app.on_event("shutdown")(lambda: shutdown_event(app))
 
     @staticmethod
