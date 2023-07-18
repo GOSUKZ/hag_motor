@@ -10,13 +10,14 @@ class Server:
         self.__register_routs(app)
         self.__register_events(app)
 
+
     def get_app(self) -> FastAPI:
         return self.__app
 
     @staticmethod
     def __register_events(app):
-        app.on_event("startup")(events.startup_event)
-        app.on_event("shutdown")(events.shutdown_event)
+        app.on_event("startup")(lambda: events.startup_event(app))
+        app.on_event("shutdown")(lambda: events.shutdown_event(app))
 
     @staticmethod
     def __register_routs(app):

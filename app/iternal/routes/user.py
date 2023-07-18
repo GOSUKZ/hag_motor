@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Request
 from ..db.user import addUser, getAllUsers, updateUser, delUser
 # from ..db.db import client
 from ..models.user import User, UpdateUser
@@ -6,11 +6,11 @@ from ..serializers.user import userEntity
 
 from fastapi.encoders import jsonable_encoder
 
-import motor.motor_asyncio
+# import motor.motor_asyncio
 
 from app.iternal.config import settings
 
-DATABASE_URL = settings.DATABASE_URL
+# DATABASE_URL = settings.DATABASE_URL
 MONGO_INITDB_DATABASE = settings.MONGO_INITDB_DATABASE
 
 router = APIRouter(
@@ -19,35 +19,35 @@ router = APIRouter(
 )
 
 @router.post("/", response_description="Success")
-async def root(user : User = Body(...)):
+async def root(request: Request, user : User = Body(...)):
     user = jsonable_encoder(user)
-    client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
-    database = client[MONGO_INITDB_DATABASE]
+    # client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
+    database = request.app.state.mongodb[MONGO_INITDB_DATABASE]
     user = await addUser(database, user)
     user = userEntity(user)
     return user
 
 @router.put("/", response_description="Success")
-async def root(user : UpdateUser = Body(...)):
+async def root(request: Request, user : UpdateUser = Body(...)):
     user = jsonable_encoder(user)
-    client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
-    database = client[MONGO_INITDB_DATABASE]
+    # client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
+    database = request.app.state.mongodb[MONGO_INITDB_DATABASE]
     user = await updateUser(database, user)
     user = userEntity(user)
     return user
 
 @router.delete("/", response_description="Success")
-async def root(id: str):
-    client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
-    database = client[MONGO_INITDB_DATABASE]
+async def root(request: Request, id: str):
+    # client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
+    database = request.app.state.mongodb[MONGO_INITDB_DATABASE]
     user = await delUser(database, id)
     user = userEntity(user)
     return user
 
 @router.get("/", response_description="Success")
-async def root():
-    client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
-    database = client[MONGO_INITDB_DATABASE]
+async def root(request: Request):
+    # client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
+    database = request.app.state.mongodb[MONGO_INITDB_DATABASE]
     users_db = await getAllUsers(database)
     users = []
     for user in users_db:
