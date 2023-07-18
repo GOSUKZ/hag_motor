@@ -14,6 +14,7 @@ router = APIRouter(
 
 @router.post("/", response_description="Success")
 async def root(user : User = Body(...)):
+    user = jsonable_encoder(user)
     # Use "await" for start_session, but not for start_transaction.
     async with await client.start_session() as s:
         user = await addUser(s, user)
