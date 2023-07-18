@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 class User(BaseModel):
     name: str
-    description: str | None = None
+    description: str = None
     price: float
-    tax: float | None = None
+    tax: float = None
 
     class Config:
         schema_extra = {
