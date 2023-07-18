@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.configuration.server import Server
 
 app = FastAPI(
-    title="Карга",
-    version="0.0.1"
+    title="MaestroAPI",
+    version="0.7.5"
 )
 
 app.add_middleware(
