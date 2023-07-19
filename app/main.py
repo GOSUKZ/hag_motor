@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.configuration.server import Server
 
 app = FastAPI(
-    title="MaestroAPI",
-    version="0.7.5"
+    title="Карга",
+    version="0.0.5"
 )
 
 app.add_middleware(
@@ -18,6 +18,6 @@ app.add_middleware(
 
 @app.get('/')
 def index():
-    return {"message": 'Hello World'}
+    return {"message": 'Hello Wor...MongoDB'}
 
 server = Server(app).get_app()
