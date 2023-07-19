@@ -1,9 +1,10 @@
 import uvicorn
+from app.iternal.config import settings
 
-WORKERS_COUNT = 10
-HOST='0.0.0.0'
-PORT=8000
-RELOAD=True
+WORKERS_COUNT = settings.WORKERS_COUNT
+HOST=settings.HOST
+PORT=settings.PORT
+RELOAD=settings.RELOAD
 
 if __name__ == "__main__":
     uvicorn.run("app.main:server", host=HOST, port=PORT, reload=RELOAD, workers=WORKERS_COUNT)
