@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.configuration.server import Server
 
 app = FastAPI(
-    title="Карга",
+    title="Hag",
     version="0.0.5"
 )
 
