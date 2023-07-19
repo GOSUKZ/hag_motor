@@ -12,7 +12,7 @@ class Server:
         self.__app = app
         self.__register_routs(app)
         self.__register_events(app)
-        # startup_event(app) # *if the startup_event does not fire, uncomment it
+        events.startup_event(app) # *if the startup_event does not fire, uncomment/comment it
 
 
     def get_app(self) -> FastAPI:
