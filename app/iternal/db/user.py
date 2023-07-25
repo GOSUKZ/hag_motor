@@ -1,14 +1,16 @@
-from ..models.user import User, UpdateUser;
+from ..models.user import User, UpdateUser
 from bson.objectid import ObjectId
+from datetime import datetime
 
 
-async def addUser(database, user : User):
+async def addUser(database, user: User):
     user_colection = database.get_collection("user")
-    
+
     user = await user_colection.insert_one(user)
     user = await user_colection.find_one({"_id": ObjectId(user.inserted_id)})
     if user:
         return user
+
 
 async def getAllUsers(database):
     user_colection = database.get_collection("user")
@@ -18,6 +20,7 @@ async def getAllUsers(database):
         users.append(user)
     return users
 
+
 async def delUser(database, id: str):
     user_colection = database.get_collection("user")
 
@@ -25,7 +28,8 @@ async def delUser(database, id: str):
     if user:
         await user_colection.delete_one({"_id": ObjectId(id)})
         return user
-    
+
+
 async def updateUser(database, user: UpdateUser):
     user_colection = database.get_collection("user")
 
