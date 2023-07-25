@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, File, UploadFile, Request
 from fastapi.responses import JSONResponse
 from bson.objectid import ObjectId
 from datetime import datetime
+from io import BytesIO
 
 import pandas as pd
 
@@ -13,8 +14,9 @@ router = APIRouter(
 @router.post("/upload/")
 async def upload_file(request: Request, file: UploadFile = File(...)):
     try:
-        # Read the Excel file using Pandas
-        # df = pd.read_excel(file.file, engine="openpyxl")  # Assuming the file is in .xlsx format.
+        # Read the Excel file using Pandas from the file's content
+        content = await file.read()
+        df = pd.read_excel(BytesIO(content), engine="openpyxl")  # Assuming the file is in .xlsx format.
 
         # df_filled_with_zero = df.fillna(0) # Fill the empty with zero values
         # array_data = df_filled_with_zero.to_numpy().tolist() # Convert to array
