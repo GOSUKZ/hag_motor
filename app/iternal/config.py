@@ -1,18 +1,22 @@
 from pydantic import BaseSettings
-import os
+from os import environ, path
 
 
 class Settings(BaseSettings):
-    MONGO_INITDB_DATABASE: str = os.environ.get('MONGO_INITDB_DATABASE')
-    DATABASE_URL: str = os.environ.get('MONGODB_URI')
+    MONGO_INITDB_DATABASE: str = environ.get('MONGO_INITDB_DATABASE')
+    DATABASE_URL: str = environ.get('MONGODB_URI')
 
-    WORKERS_COUNT: int = os.environ.get('WORKERS_COUNT')
-    PORT: int = os.environ.get('PORT')
-    RELOAD: bool = os.environ.get('RELOAD')
-    HOST: str = os.environ.get('HOST')
+    REDIS_HOST: str = environ.get('REDIS_HOST')
+    REDIS_PORT: int = environ.get('REDIS_PORT')
+    REDIS_PASS: str = environ.get('REDIS_PASS')
+
+    WORKERS_COUNT: int = environ.get('WORKERS_COUNT')
+    PORT: int = environ.get('PORT')
+    RELOAD: bool = environ.get('RELOAD')
+    HOST: str = environ.get('HOST')
 
     class Config:
-        env_file = f'{os.path.dirname(os.path.abspath(__file__))}/app/.env'
+        env_file = f'{path.dirname(path.abspath(__file__))}/app/.env'
 
 
 #*to run locally replace with

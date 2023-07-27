@@ -1,9 +1,7 @@
 from fastapi import FastAPI
 from app.configuration.routes import __routes__
 from app.iternal.events import events
-from app.iternal.config import settings
 
-DATABASE_URL = settings.DATABASE_URL
 
 class Server:
     __app: FastAPI
@@ -12,8 +10,8 @@ class Server:
         self.__app = app
         self.__register_routs(app)
         self.__register_events(app)
-        events.startup_event(app) # *if the startup_event does not fire, uncomment/comment it
-
+        # *if the startup_event does not fire, uncomment/comment it
+        events.startup_event(app)
 
     def get_app(self) -> FastAPI:
         return self.__app
@@ -26,6 +24,4 @@ class Server:
     @staticmethod
     def __register_routs(app):
         __routes__.register_routes(app)
-
-
-    
+ 

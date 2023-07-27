@@ -1,6 +1,3 @@
-import pathlib
-from fastapi.responses import StreamingResponse
-import io
 from fastapi import APIRouter, Body, File, UploadFile, Request
 from fastapi.responses import JSONResponse, Response
 from bson.objectid import ObjectId
