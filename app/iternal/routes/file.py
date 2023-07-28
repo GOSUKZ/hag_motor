@@ -146,13 +146,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                         buf_data["updated_at"] = now
                         result = await business_colection.insert_one(buf_data)
                         print("create", result.inserted_id)
-                    else:
-                        # Calculate the number of modified fields
-                        num_modified_fields = (
-                            sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
-                        if num_modified_fields > 0:
-                            pass
-                            # print("update", result.get('_id'), "count", num_modified_fields)
+
             else:
                 print("Error")
 
