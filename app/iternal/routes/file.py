@@ -109,7 +109,6 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
             business_colection = database.get_collection("data")
 
             result = await business_colection.insert_many(data_for_db)
-
         else:
             # limit the reading area
             array_data = array_data[3:]
@@ -131,22 +130,27 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
             database = request.app.state.mongodb["Dina_Cargo"]
             business_colection = database.get_collection("data")
 
-            if await verification_upload_time(request.app.state.database, control_data, "Dina_Cargo"):
-                for line in data_for_db:
-                    filter = {"_id": ObjectId(line['_id'])}
+            # if await verification_upload_time(request.app.state.database, control_data, "Dina_Cargo"):
+            for line in data_for_db:
+                filter = {"_id": ObjectId(line['_id'])}
 
-                    buf_data = line
-                    del buf_data['_id']
+                buf_data = line
+                del buf_data['_id']
+                buf_data["updated_at"] = now
+                update = {"$set": buf_data}
+
+                result = await business_colection.find_one_and_update(filter, update)
+                if not result:
+                    buf_data["created_at"] = now
                     buf_data["updated_at"] = now
-                    update = {"$set": buf_data}
-
-                    result = await business_colection.find_one_and_update(filter, update)
-                    if not result:
-                        buf_data["created_at"] = now
-                        buf_data["updated_at"] = now
-                        result = await business_colection.insert_one(buf_data)
-                        print("create", result.inserted_id)
-
+                    result = await business_colection.insert_one(buf_data)
+                    print("create", result.inserted_id)
+                else:
+                    # Calculate the number of modified fields
+                    num_modified_fields = (
+                        sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
+                    if num_modified_fields > 0:
+                        print("update", result.get('_id'), "count", num_modified_fields)
             else:
                 print("Error")
 
@@ -199,46 +203,6 @@ async def export_excel(request: Request):
 
         # Return the Excel file as a response
         return Response(content=excel_content, headers=response_headers)
-    except Exception as e:
-        print('e: ', e)
-        # Exception
-        return JSONResponse(content={"message": f"Не найден, обновление не выполнено."}, status_code=500)
-
-
-@router.post("/put/")
-async def upload_file(request: Request):
-    try:
-        database = request.app.state.mongodb["Dina_Cargo"]
-        business_colection = database.get_collection("data")
-
-        filter = {"_id": ObjectId("64bfaaf84582a086bb484b11")}
-        update = {"$set": {"Вес": 100}}
-
-        # result = await business_colection.update_one(filter, update)
-        result = await business_colection.update_one(filter, update)
-
-        # Success
-        return JSONResponse(content={"message": f"Успешно обновлен."})
-    except Exception as e:
-        # Exception
-        return JSONResponse(content={"message": f"Не найден, обновление не выполнено."}, status_code=500)
-
-
-@router.post("/get/")
-async def upload_file(request: Request):
-    try:
-        database = request.app.state.mongodb["Dina_Cargo"]
-        business_colection = database.get_collection("data")
-
-        filter = {"_id": ObjectId("64bfaaf84582a086bb484b11")}
-
-        result = await business_colection.find({}).to_list(None)
-
-        for res in result[0].keys():
-            result[0][res] = str(result[0][res])
-
-        # Success
-        return JSONResponse(content={"message": f"Успешно обновлен.", "result": result[0]})
     except Exception as e:
         print('e: ', e)
         # Exception
