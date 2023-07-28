@@ -1,10 +1,12 @@
 from asyncio import get_event_loop
 from app.iternal.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
-
+from app.iternal.db.sessiondb import RSessions
+from pymongo import DESCENDING
 
 DATABASE_URL = settings.DATABASE_URL
 MONGO_INITDB_DATABASE = settings.MONGO_INITDB_DATABASE
+
 
 def startup_event(app) -> AsyncIOMotorClient:
     client = AsyncIOMotorClient(DATABASE_URL)
@@ -12,6 +14,14 @@ def startup_event(app) -> AsyncIOMotorClient:
 
     app.state.mongodb = client
     app.state.database = app.state.mongodb[MONGO_INITDB_DATABASE]
+
+    try:
+        control_data_colection = app.state.database.get_collection("control_data")
+        control_data_colection.create_index([("company_key", DESCENDING)], unique=True, background=True)
+    except:
+        pass
+
+    app.state.r_session: RSessions = RSessions()
 
     print("startup_event")
 

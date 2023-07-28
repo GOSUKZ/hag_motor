@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, File, UploadFile, Request
+from fastapi import APIRouter, File, UploadFile, Request
 from fastapi.responses import JSONResponse, Response
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -12,10 +12,39 @@ router = APIRouter(
 )
 
 
+async def verification_upload_time(database, control_data, company_key: str) -> bool:
+    control_data_colection = database.get_collection("control_data")
+
+    upload_at = datetime.now().timestamp()
+    export_at = control_data.get("export_at")
+
+    filter = {"company_key": company_key}
+    result = await control_data_colection.find_one(filter)
+    if not result:
+        if export_at:
+            control_data_colection.insert_one(
+                {"company_key": company_key, "upload_at": export_at})
+            upload_at = export_at
+        else:
+            control_data_colection.insert_one(
+                {"company_key": company_key, "upload_at": upload_at})
+    else:
+        upload_at = result.get("upload_at")
+
+    if export_at and upload_at <= export_at:
+        update = {"$set": {"upload_at": export_at}}
+        result = await control_data_colection.find_one_and_update(filter, update)
+
+        return True
+    return False
+
+
 @router.post("/upload/")
 async def upload_file(request: Request, file: UploadFile = File(...)):
     # Read the Excel file using Pandas from the file's content
     content = await file.read()
+
+    control_data = {}
 
     try:
         # Assuming the file is in .xlsx format.
@@ -29,18 +58,12 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         # Convert to array
         control_data_array_data = control_data_df_filled_with_zero.to_numpy().tolist()
 
-    except Exception as e:
-        print({"message": str(e)})
-
-    control_data = {}
-
-    try:
         # Check if the array
-        if control_data_array_data:
+        if len(control_data_array_data) > 0:
 
             # limit the reading area
-            control_data_array_keys = control_data_array_data[2:3]
-            control_data_array_data = control_data_array_data[3:]
+            control_data_array_keys = control_data_array_data[3:4]
+            control_data_array_data = control_data_array_data[4:5]
 
             # Collect data from control_data sheet
             for i in range(0, len(control_data_array_keys)):
@@ -49,10 +72,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                 control_data[key] = data
 
     except Exception as e:
-
-        control_data = {}
-
         print({"message": str(e)})
+
+    now = datetime.now()
 
     try:
         # Assuming the file is in .xlsx format.
@@ -62,7 +84,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         df_filled_with_zero = df.where(pd.notnull(df), None)
         array_data = df_filled_with_zero.to_numpy().tolist()  # Convert to array
 
-        if not control_data:
+        if not len(control_data) > 0:
             # limit the reading area
             # * -1 because we don't read the total and 4 because we don't read header
             array_data = array_data[3:-1]
@@ -79,8 +101,8 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                 for j in range(len(title_array)):
                     title = str(title_array[j])
                     line_for_db[title] = data_array[i][j]
-                line_for_db["created_at"] = datetime.now()
-                line_for_db["updated_at"] = datetime.now()
+                line_for_db["created_at"] = now
+                line_for_db["updated_at"] = now
                 data_for_db.append(line_for_db)
 
             database = request.app.state.mongodb["Dina_Cargo"]
@@ -107,27 +129,31 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                 data_for_db.append(line_for_db)
 
             database = request.app.state.mongodb["Dina_Cargo"]
-            business_colection = database.get_collection(
-                "data")
+            business_colection = database.get_collection("data")
 
-            for line in data_for_db:
-                filter = {"_id": ObjectId(line['_id'])}
+            if await verification_upload_time(request.app.state.database, control_data, "Dina_Cargo"):
+                for line in data_for_db:
+                    filter = {"_id": ObjectId(line['_id'])}
 
-                buf_data = line
-                del buf_data['_id']
-                buf_data["updated_at"] = datetime.now()
-                update = {"$set": buf_data}
+                    buf_data = line
+                    del buf_data['_id']
+                    buf_data["updated_at"] = now
+                    update = {"$set": buf_data}
 
-                result = await business_colection.find_one_and_update(filter, update)
-                if not result:
-                    buf_data["created_at"] = datetime.now()
-                    buf_data["updated_at"] = datetime.now()
-                    result = await business_colection.insert_one(buf_data)
-                    print(result.inserted_id)
-
-                # result = await business_colection.find_one(filter)
-                # result['_id'] = str(result['_id'])
-                # print('result: ', result)
+                    result = await business_colection.find_one_and_update(filter, update)
+                    if not result:
+                        buf_data["created_at"] = now
+                        buf_data["updated_at"] = now
+                        result = await business_colection.insert_one(buf_data)
+                        print("create", result.inserted_id)
+                    else:
+                        # Calculate the number of modified fields
+                        num_modified_fields = (
+                            sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
+                        if num_modified_fields > 0:
+                            print("update", result.get('_id'), "count", num_modified_fields)
+            else:
+                print("Error")
 
         # Success
         return JSONResponse(content={"message": "File uploaded successfully"})
@@ -152,7 +178,7 @@ async def export_excel(request: Request):
 
         # Create a DataFrame from the data
         df = pd.DataFrame(result)
-        df2 = pd.DataFrame({"created_at": [datetime.utcnow()]})
+        df2 = pd.DataFrame({"export_at": [datetime.utcnow().timestamp()]})
 
         # Create an Excel writer using BytesIO
         excel_writer = BytesIO()
