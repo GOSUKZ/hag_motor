@@ -6,11 +6,35 @@ from io import BytesIO
 
 import pandas as pd
 
+import asyncio
+
 router = APIRouter(
     prefix="/files",
     tags=["Files"]
 )
 
+async def test(line, now, business_colection):
+
+    filter = {"_id": ObjectId(line['_id'])}
+
+    buf_data = line
+    del buf_data['_id']
+    buf_data["updated_at"] = now
+    update = {"$set": buf_data}
+
+    result = await business_colection.find_one_and_update(filter, update)
+    if not result:
+        buf_data["created_at"] = now
+        buf_data["updated_at"] = now
+        result = await business_colection.insert_one(buf_data)
+        print("create", result.inserted_id)
+    else:
+        # Calculate the number of modified fields
+        num_modified_fields = (
+            sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
+        if num_modified_fields > 0:
+            print("update", result.get('_id'), "count", num_modified_fields)
+    
 
 async def verification_upload_time(database, control_data, company_key: str) -> bool:
     control_data_colection = database.get_collection("control_data")
@@ -132,25 +156,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
             if await verification_upload_time(request.app.state.database, control_data, "Dina_Cargo"):
                 for line in data_for_db:
-                    filter = {"_id": ObjectId(line['_id'])}
-
-                    buf_data = line
-                    del buf_data['_id']
-                    buf_data["updated_at"] = now
-                    update = {"$set": buf_data}
-
-                    result = await business_colection.find_one_and_update(filter, update)
-                    if not result:
-                        buf_data["created_at"] = now
-                        buf_data["updated_at"] = now
-                        result = await business_colection.insert_one(buf_data)
-                        print("create", result.inserted_id)
-                    else:
-                        # Calculate the number of modified fields
-                        num_modified_fields = (
-                            sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
-                        if num_modified_fields > 0:
-                            print("update", result.get('_id'), "count", num_modified_fields)
+                    asyncio.create_task(test(line, now, business_colection))
             else:
                 print("Error")
 
