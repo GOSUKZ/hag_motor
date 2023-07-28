@@ -151,8 +151,8 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                         sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
                     if num_modified_fields > 0:
                         print("update", result.get('_id'), "count", num_modified_fields)
-            else:
-                print("Error")
+            # else:
+            #     print("Error")
 
         # Success
         return JSONResponse(content={"message": "File uploaded successfully"})
