@@ -130,29 +130,29 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
             database = request.app.state.mongodb["Dina_Cargo"]
             business_colection = database.get_collection("data")
 
-            # if await verification_upload_time(request.app.state.database, control_data, "Dina_Cargo"):
-            for line in data_for_db:
-                filter = {"_id": ObjectId(line['_id'])}
+            if await verification_upload_time(request.app.state.database, control_data, "Dina_Cargo"):
+                for line in data_for_db:
+                    filter = {"_id": ObjectId(line['_id'])}
 
-                buf_data = line
-                del buf_data['_id']
-                buf_data["updated_at"] = now
-                update = {"$set": buf_data}
-
-                result = await business_colection.find_one_and_update(filter, update)
-                if not result:
-                    buf_data["created_at"] = now
+                    buf_data = line
+                    del buf_data['_id']
                     buf_data["updated_at"] = now
-                    result = await business_colection.insert_one(buf_data)
-                    print("create", result.inserted_id)
-                else:
-                    # Calculate the number of modified fields
-                    num_modified_fields = (
-                        sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
-                    if num_modified_fields > 0:
-                        print("update", result.get('_id'), "count", num_modified_fields)
-            # else:
-            #     print("Error")
+                    update = {"$set": buf_data}
+
+                    result = await business_colection.find_one_and_update(filter, update)
+                    if not result:
+                        buf_data["created_at"] = now
+                        buf_data["updated_at"] = now
+                        result = await business_colection.insert_one(buf_data)
+                        print("create", result.inserted_id)
+                    else:
+                        # Calculate the number of modified fields
+                        num_modified_fields = (
+                            sum(1 for key, value in update["$set"].items() if result.get(key) != value) - 1)
+                        if num_modified_fields > 0:
+                            print("update", result.get('_id'), "count", num_modified_fields)
+            else:
+                print("Error")
 
         # Success
         return JSONResponse(content={"message": "File uploaded successfully"})
