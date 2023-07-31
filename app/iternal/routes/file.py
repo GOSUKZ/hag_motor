@@ -93,7 +93,8 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                     # Check if product is exist
                     if (result is not None):
                         # Calculate the number of modified fields and check it
-                        sum_chenges = sum(1 for key, value in buf_data.items() if result.get(key) != value) - 1
+                        sum_chenges = sum(
+                            1 for key, value in buf_data.items() if result.get(key) != value) - 1
 
                         if sum_chenges > 0:
                             buf_data["updated_at"] = now
@@ -167,7 +168,8 @@ async def confirm_file(request: Request, id: str):
     try:
         database = request.app.state.mongodb["Dina_Cargo"]
         upload_colection = database.get_collection("upload")
-        control_data_colection = request.app.state.database.get_collection("control_data")
+        control_data_colection = request.app.state.database.get_collection(
+            "control_data")
 
         filter = {'_id': ObjectId(id)}
 
@@ -182,21 +184,29 @@ async def confirm_file(request: Request, id: str):
 
             # Check if control_data exists
             if (len(control_data) > 0):
+                # Create control timestamp
                 upload_at = 0
                 export_at = control_data.get("export_at")
 
                 filter = {"company_key": "Dina_Cargo"}
                 result = await control_data_colection.find_one(filter)
 
+                # Check if upload_at exists
                 if (result is None):
-                    insert = {"company_key": "Dina_Cargo", "upload_at": upload_at}
+                    insert = {
+                        "company_key": "Dina_Cargo",
+                        "upload_at": upload_at
+                    }
+
                     await control_data_colection.insert_one(insert)
                 elif (result.get("upload_at") is None):
                     update = {"$set": {"upload_at": upload_at}}
+
                     await control_data_colection.update_one(filter, update)
                 else:
                     upload_at = result.get("upload_at")
 
+                # Check if conflict ver.
                 if (upload_at > export_at):
                     pass
 
@@ -219,10 +229,10 @@ async def confirm_file(request: Request, id: str):
                         # if line not contains _id field
                         insert_data.append(data)
 
-                # Check if changes exist       
+                # Check if changes exist
                 if (len(insert_data) > 0):
                     result = await data_colection.insert_many(insert_data)
-                
+
                 filter = {"company_key": "Dina_Cargo"}
                 update = {"$set": {"upload_at": export_at}}
                 result = await control_data_colection.update_one(filter, update)
@@ -237,7 +247,7 @@ async def confirm_file(request: Request, id: str):
         return JSONResponse(content={"message": "File confirm successfully"})
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": str(e)}, status_code=500) 
+        return JSONResponse(content={"message": str(e)}, status_code=500)
 
 
 @router.get("/export_excel/")
