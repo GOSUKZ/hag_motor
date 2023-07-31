@@ -47,7 +47,6 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                 key = control_data_list_keys[i][0]
                 data = control_data_list[i][0]
                 control_data[key] = data
-
     except Exception as e:
         print({"message": str(e)})
 
@@ -180,6 +179,7 @@ async def confirm_file(request: Request, id: str):
 
             data_colection = database.get_collection("data")
 
+            # Check if control_data exists
             if (len(control_data) > 0):
                 insert_data = []
                 for line in data_for_db:
@@ -187,14 +187,20 @@ async def confirm_file(request: Request, id: str):
                     data = dict(line)
                     del data['_id']
 
+                    # Check if line contains _id field
                     if (line.get('_id') is not None):
                         filter = {'_id': ObjectId(line['_id'])}
                         update = {"$set": data}
                         result = await data_colection.find_one_and_update(filter, update)
+
+                        # Check if product exists
                         if (result is None):
                             insert_data.append(data)
                     else:
+                        # if line not contains _id field
                         insert_data.append(data)
+
+                # Check if changes exist       
                 if (len(insert_data) > 0):
                     result = await data_colection.insert_many(insert_data)
             else:
