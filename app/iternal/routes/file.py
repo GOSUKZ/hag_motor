@@ -72,10 +72,12 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
             task = asyncio.create_task(upload_generated_file(
                 data_colection, upload_colection, now, action_extended_id, control_data, list_data))
+            task.get_loop = asyncio.get_event_loop
 
         else:
             task = asyncio.create_task(upload_external_file(
                 upload_colection, now, action_extended_id, list_data))
+            task.get_loop = asyncio.get_event_loop
 
         print("Success point")
         # Success
