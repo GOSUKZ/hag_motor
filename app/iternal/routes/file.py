@@ -417,7 +417,7 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
 async def upload_external_file(upload_colection, now, action_extended_id, list_data):
     # limit the reading area
     # * -1 because we don't read the total and 4 because we don't read header
-    list_data = list_data[3:-1]
+    list_data = list_data[4:-1]
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:19]
 
