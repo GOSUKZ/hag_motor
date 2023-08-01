@@ -19,11 +19,14 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
     # Get now data
     now = datetime.utcnow()
 
+    action_extended_id = ObjectId()
+
     # Read the Excel file using Pandas from the file's content
     content = await file.read()
 
     control_data = {}
 
+    # Get the control_data
     try:
         # Assuming the file is in .xlsx format.
         control_df = pd.read_excel(
@@ -50,6 +53,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         print({"message": str(e)})
 
+    # Get the data
     try:
         # Assuming the file is in .xlsx format.
         df = pd.read_excel(BytesIO(content), engine="openpyxl")
@@ -66,100 +70,16 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         # Check if the control_data exists
         if (len(control_data) > 0):
 
-            # limit the reading area
-            list_data = list_data[4:]
-            for i in range(len(list_data)):
-                list_data[i] = list_data[i][:20]
-
-            title_list = ['_id', 'Дата', 'Место отправки', 'Вид отправки', 'Телефон клиента', 'Код клиента', 'Описание груза ', 'Количество мест', 'Вес', 'Плотность места', 'Плотность',
-                          'Место доставки', 'За упаковку', 'За доставку', 'Разное', 'Страховка', 'Цена за единицу', 'Общая сумма', 'Дата прихода', 'Количество полученных позицый']
-
-            data_list = []
-            for i in range(len(list_data)):
-                line_for_db = {}
-                for j in range(len(title_list)):
-                    title = str(title_list[j])
-                    line_for_db[title] = list_data[i][j]
-                data_list.append(line_for_db)
-
-            data_buf_list = []
-
-            for line in data_list:
-                buf_data = dict(line)
-                # Check if id field is exist and valid
-                if (ObjectId.is_valid(line['_id'])):
-                    filter = {"_id": ObjectId(line['_id'])}
-                    result = await data_colection.find_one(filter)
-                    # Check if product is exist
-                    if (result is not None):
-                        # Calculate the number of modified fields and check it
-                        sum_chenges = sum(
-                            1 for key, value in buf_data.items() if result.get(key) != value) - 1
-
-                        if sum_chenges > 0:
-                            buf_data["updated_at"] = now
-                            data_buf_list.append(buf_data)
-                    else:
-                        # If product not in connection
-                        del buf_data["_id"]
-                        buf_data["created_at"] = now
-                        buf_data["updated_at"] = now
-                        data_buf_list.append(buf_data)
-                else:
-                    # If add new product
-                    del buf_data["_id"]
-                    buf_data["created_at"] = now
-                    buf_data["updated_at"] = now
-                    data_buf_list.append(buf_data)
-
-            # Check if changes exist
-            if (len(data_buf_list) > 0):
-                data_for_db = dict()
-                data_for_db["created_at"] = now
-                data_for_db["control"] = control_data
-                data_for_db["data"] = data_buf_list
-                data_for_db["status"] = "ok"
-
-                # * Есть вопросы, но пойдёт
-                result = await upload_colection.insert_one(data_for_db)
-
-                # Success
-                return JSONResponse(content={"message": "File pre-upload successfully", "data": str(result.inserted_id)})
+            asyncio.create_task(upload_generated_file(
+                data_colection, upload_colection, now, action_extended_id, control_data, list_data))
 
         else:
-            # limit the reading area
-            # * -1 because we don't read the total and 4 because we don't read header
-            list_data = list_data[3:-1]
-            for i in range(len(list_data)):
-                list_data[i] = list_data[i][:19]
+            asyncio.create_task(upload_external_file(
+                upload_colection, now, action_extended_id, list_data))
 
-            title_list = ['Дата', 'Место отправки', 'Вид отправки', 'Телефон клиента', 'Код клиента', 'Описание груза ', 'Количество мест', 'Вес', 'Плотность места', 'Плотность',
-                          'Место доставки', 'За упаковку', 'За доставку', 'Разное', 'Страховка', 'Цена за единицу', 'Общая сумма', 'Дата прихода', 'Количество полученных позицый']
-
-            data_list = []
-            for i in range(len(list_data[1:])):
-                line_for_db = {}
-                for j in range(len(title_list)):
-                    title = str(title_list[j])
-                    line_for_db[title] = list_data[i][j]
-                line_for_db["created_at"] = now
-                line_for_db["updated_at"] = now
-                data_list.append(line_for_db)
-
-            if (len(data_list) > 0):
-                data_for_db = dict()
-                data_for_db["created_at"] = now
-                data_for_db["data"] = data_list
-                data_for_db["status"] = "ok"
-
-                # * Есть вопросы, но пойдёт
-                result = await upload_colection.insert_one(data_for_db)
-
-                # Success
-                return JSONResponse(content={"message": "File pre-upload successfully", "data": str(result.inserted_id)}, status_code=202)
-
+        print("Success")
         # Success
-        return JSONResponse(content={"message": "File pre-upload successfully", "data": 0})
+        return JSONResponse(content={"message": "File pre-upload successfully", "data": str(action_extended_id)}, status_code=202)
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": str(e)}, status_code=422)
@@ -173,7 +93,7 @@ async def confirm_file(request: Request, id: str):
         control_colection = request.app.state.database.get_collection(
             "control_data")
 
-        filter = {'_id': ObjectId(id)}
+        filter = {'action_id': ObjectId(id)}
 
         result = await upload_colection.find_one(filter)
 
@@ -185,7 +105,7 @@ async def confirm_file(request: Request, id: str):
             data_colection = database.get_collection("data")
 
             # Check if control_data exists
-            if (len(control_data) > 0):
+            if (control_data):
                 # Create control timestamp
                 upload_at = 0
                 export_at = control_data.get("export_at")
@@ -210,12 +130,12 @@ async def confirm_file(request: Request, id: str):
 
                 # Check if conflict
                 if (upload_at > export_at):
-                    filter = {'_id': ObjectId(id)}
+                    filter = {'action_id': ObjectId(id)}
                     update = {'$set': {"status": "conflict"}}
                     result = await upload_colection.find_one_and_update(filter, update)
 
                     # Success
-                    return JSONResponse(content={"message": "File confirm conflict", "data": str(result['_id'])}, status_code=409)
+                    return JSONResponse(content={"message": "File confirm conflict", "data": str(result['action_id'])}, status_code=409)
 
                 insert_data = []
                 for line in data_for_db:
@@ -247,7 +167,7 @@ async def confirm_file(request: Request, id: str):
             else:
                 result = await data_colection.insert_many(data_for_db)
 
-        filter = {'_id': ObjectId(id), "status": "ok"}
+        filter = {'action_id': ObjectId(id), "status": "ok"}
         result = await upload_colection.delete_one(filter)
 
         # Success
@@ -313,7 +233,7 @@ async def conflict(request: Request, id: str):
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
-        filter = {'_id': ObjectId(id), "status": "conflict"}
+        filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
 
         new_data = result.get("data")
@@ -348,7 +268,7 @@ async def conflict(request: Request, id: str, object_id: str):
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
-        filter = {'_id': ObjectId(id), "status": "conflict"}
+        filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
 
         data_buf = result.get("data")
@@ -390,7 +310,7 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
-        filter = {'_id': ObjectId(id), "status": "conflict"}
+        filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
 
         data_buf = result.get("data")
@@ -419,11 +339,11 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
                 i = i + 1
 
         if len(data_buf) > 0:
-            filter = {'_id': ObjectId(id), "status": "conflict"}
+            filter = {'action_id': ObjectId(id), "status": "conflict"}
             update = {'$set': {"data": data_buf}}
             result = await upload_colection.find_one_and_update(filter, update)
         else:
-            filter = {'_id': ObjectId(id), "status": "conflict"}
+            filter = {'action_id': ObjectId(id), "status": "conflict"}
             result = await upload_colection.delete_one(filter)
 
         # Success
@@ -431,3 +351,97 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": "Not Faund conflict", "error": str(e)}, status_code=404)
+
+
+# Functions for async upload files on background
+async def upload_generated_file(data_colection, upload_colection, now, action_extended_id, control_data, list_data):
+    # limit the reading area
+    list_data = list_data[4:]
+    for i in range(len(list_data)):
+        list_data[i] = list_data[i][:20]
+
+    title_list = ['_id', 'Дата', 'Место отправки', 'Вид отправки', 'Телефон клиента', 'Код клиента', 'Описание груза ', 'Количество мест', 'Вес', 'Плотность места', 'Плотность',
+                  'Место доставки', 'За упаковку', 'За доставку', 'Разное', 'Страховка', 'Цена за единицу', 'Общая сумма', 'Дата прихода', 'Количество полученных позицый']
+
+    data_list = []
+    for i in range(len(list_data)):
+        line_for_db = {}
+        for j in range(len(title_list)):
+            title = str(title_list[j])
+            line_for_db[title] = list_data[i][j]
+        data_list.append(line_for_db)
+
+    data_buf_list = []
+
+    for line in data_list:
+        buf_data = dict(line)
+        # Check if id field is exist and valid
+        if (ObjectId.is_valid(line['_id'])):
+            filter = {"_id": ObjectId(line['_id'])}
+            result = await data_colection.find_one(filter)
+            # Check if product is exist
+            if (result is not None):
+                # Calculate the number of modified fields and check it
+                sum_chenges = sum(
+                    1 for key, value in buf_data.items() if result.get(key) != value) - 1
+
+                if sum_chenges > 0:
+                    buf_data["updated_at"] = now
+                    data_buf_list.append(buf_data)
+            else:
+                # If product not in connection
+                del buf_data["_id"]
+                buf_data["created_at"] = now
+                buf_data["updated_at"] = now
+                data_buf_list.append(buf_data)
+        else:
+            # If add new product
+            del buf_data["_id"]
+            buf_data["created_at"] = now
+            buf_data["updated_at"] = now
+            data_buf_list.append(buf_data)
+
+    # Check if changes exist
+    if (len(data_buf_list) > 0):
+        data_for_db = dict()
+        data_for_db["action_id"] = action_extended_id
+        data_for_db["created_at"] = now
+        data_for_db["control"] = control_data
+        data_for_db["data"] = data_buf_list
+        data_for_db["status"] = "ok"
+
+        # * Есть вопросы, но пойдёт
+        result = await upload_colection.insert_one(data_for_db)
+
+
+async def upload_external_file(upload_colection, now, action_extended_id, list_data):
+    # limit the reading area
+    # * -1 because we don't read the total and 4 because we don't read header
+    list_data = list_data[3:-1]
+    for i in range(len(list_data)):
+        list_data[i] = list_data[i][:19]
+
+    title_list = ['Дата', 'Место отправки', 'Вид отправки', 'Телефон клиента', 'Код клиента', 'Описание груза ', 'Количество мест', 'Вес', 'Плотность места', 'Плотность',
+                  'Место доставки', 'За упаковку', 'За доставку', 'Разное', 'Страховка', 'Цена за единицу', 'Общая сумма', 'Дата прихода', 'Количество полученных позицый']
+
+    data_list = []
+    for i in range(len(list_data[1:])):
+        line_for_db = {}
+        for j in range(len(title_list)):
+            title = str(title_list[j])
+            line_for_db[title] = list_data[i][j]
+        line_for_db["created_at"] = now
+        line_for_db["updated_at"] = now
+        data_list.append(line_for_db)
+
+    if (len(data_list) > 0):
+        data_for_db = dict()
+        data_for_db["action_id"] = action_extended_id
+        data_for_db["created_at"] = now
+        data_for_db["data"] = data_list
+        data_for_db["status"] = "ok"
+
+        # * Есть вопросы, но пойдёт
+        result = await upload_colection.insert_one(data_for_db)
+    print("Success Function")
+# ----------------------------------------------
