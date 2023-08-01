@@ -118,6 +118,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                 data_for_db["created_at"] = now
                 data_for_db["control"] = control_data
                 data_for_db["data"] = data_buf_list
+                data_for_db["status"] = "ok"
 
                 # * Есть вопросы, но пойдёт
                 result = await upload_colection.insert_one(data_for_db)
@@ -149,18 +150,19 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                 data_for_db = dict()
                 data_for_db["created_at"] = now
                 data_for_db["data"] = data_list
+                data_for_db["status"] = "ok"
 
                 # * Есть вопросы, но пойдёт
                 result = await upload_colection.insert_one(data_for_db)
 
                 # Success
-                return JSONResponse(content={"message": "File pre-upload successfully", "data": str(result.inserted_id)})
+                return JSONResponse(content={"message": "File pre-upload successfully", "data": str(result.inserted_id)}, status_code=202)
 
         # Success
         return JSONResponse(content={"message": "File pre-upload successfully", "data": 0})
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": str(e)}, status_code=500)
+        return JSONResponse(content={"message": str(e)}, status_code=422)
 
 
 @router.post("/confirm/{id}")
@@ -168,7 +170,7 @@ async def confirm_file(request: Request, id: str):
     try:
         database = request.app.state.mongodb["Dina_Cargo"]
         upload_colection = database.get_collection("upload")
-        control_data_colection = request.app.state.database.get_collection(
+        control_colection = request.app.state.database.get_collection(
             "control_data")
 
         filter = {'_id': ObjectId(id)}
@@ -189,7 +191,7 @@ async def confirm_file(request: Request, id: str):
                 export_at = control_data.get("export_at")
 
                 filter = {"company_key": "Dina_Cargo"}
-                result = await control_data_colection.find_one(filter)
+                result = await control_colection.find_one(filter)
 
                 # Check if upload_at exists
                 if (result is None):
@@ -198,17 +200,22 @@ async def confirm_file(request: Request, id: str):
                         "upload_at": upload_at
                     }
 
-                    await control_data_colection.insert_one(insert)
+                    await control_colection.insert_one(insert)
                 elif (result.get("upload_at") is None):
                     update = {"$set": {"upload_at": upload_at}}
 
-                    await control_data_colection.update_one(filter, update)
+                    await control_colection.update_one(filter, update)
                 else:
                     upload_at = result.get("upload_at")
 
-                # Check if conflict ver.
+                # Check if conflict
                 if (upload_at > export_at):
-                    pass
+                    filter = {'_id': ObjectId(id)}
+                    update = {'$set': {"status": "conflict"}}
+                    result = await upload_colection.find_one_and_update(filter, update)
+
+                    # Success
+                    return JSONResponse(content={"message": "File confirm conflict", "data": str(result['_id'])}, status_code=409)
 
                 insert_data = []
                 for line in data_for_db:
@@ -235,16 +242,16 @@ async def confirm_file(request: Request, id: str):
 
                 filter = {"company_key": "Dina_Cargo"}
                 update = {"$set": {"upload_at": export_at}}
-                result = await control_data_colection.update_one(filter, update)
+                result = await control_colection.update_one(filter, update)
 
             else:
                 result = await data_colection.insert_many(data_for_db)
 
-        filter = {'_id': ObjectId(id)}
+        filter = {'_id': ObjectId(id), "status": "ok"}
         result = await upload_colection.delete_one(filter)
 
         # Success
-        return JSONResponse(content={"message": "File confirm successfully"})
+        return JSONResponse(content={"message": "File confirm successfully"}, status_code=202)
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": str(e)}, status_code=500)
@@ -297,3 +304,130 @@ async def export_excel(request: Request):
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": str(e)}, status_code=500)
+
+
+@router.get("/conflict/{id}")
+async def conflict(request: Request, id: str):
+    try:
+        database = request.app.state.mongodb["Dina_Cargo"]
+        upload_colection = database.get_collection("upload")
+        data_colection = database.get_collection("data")
+
+        filter = {'_id': ObjectId(id), "status": "conflict"}
+        result = await upload_colection.find_one(filter)
+
+        new_data = result.get("data")
+        for data in new_data:
+            del data["updated_at"]
+            for key in data.keys():
+                data[key] = str(data.get(key))
+        curren_data = []
+
+        for data in new_data:
+            filter = {'_id': ObjectId(data.get("_id"))}
+            result = await data_colection.find_one(filter)
+            if result is not None:
+                del result["updated_at"]
+                del result["created_at"]
+
+                for key in result.keys():
+                    result[key] = str(result.get(key))
+                curren_data.append(result)
+
+        # Success
+        return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": new_data, "curren_data": curren_data}})
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": str(e)}, status_code=404)
+
+
+@router.get("/conflict/{id}/{object_id}")
+async def conflict(request: Request, id: str, object_id: str):
+    try:
+        database = request.app.state.mongodb["Dina_Cargo"]
+        upload_colection = database.get_collection("upload")
+        data_colection = database.get_collection("data")
+
+        filter = {'_id': ObjectId(id), "status": "conflict"}
+        result = await upload_colection.find_one(filter)
+
+        data_buf = result.get("data")
+        new_data = []
+        for data in data_buf:
+            if (data['_id'] == object_id):
+                del data["updated_at"]
+                for key in data.keys():
+                    data[key] = str(data.get(key))
+                new_data.append(data)
+
+        curren_data = []
+
+        for data in new_data:
+            filter = {'_id': ObjectId(data.get("_id"))}
+            result = await data_colection.find_one(filter)
+            if result is not None:
+                del result["updated_at"]
+                del result["created_at"]
+
+                for key in result.keys():
+                    result[key] = str(result.get(key))
+                curren_data.append(result)
+
+        # Success
+        return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": new_data, "curren_data": curren_data}})
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": str(e)}, status_code=404)
+
+
+@router.get("/conflict/{id}/{object_id}/{action}")
+async def conflict(request: Request, id: str, object_id: str, action: str):
+    try:
+        if action not in ["new", "current"]:
+            raise Exception("action not supported [new, current]")
+
+        database = request.app.state.mongodb["Dina_Cargo"]
+        upload_colection = database.get_collection("upload")
+        data_colection = database.get_collection("data")
+
+        filter = {'_id': ObjectId(id), "status": "conflict"}
+        result = await upload_colection.find_one(filter)
+
+        data_buf = result.get("data")
+        new_data = []
+
+        if action == "new":
+
+            i = 0
+            while i < len(data_buf):
+                if (data_buf[i]['_id'] == object_id):
+                    new_data.append(data_buf[i])
+                    data_buf = list(data_buf[:i] + data_buf[i+1:])
+                i = i + 1
+
+            for data in new_data:
+                filter = {'_id': ObjectId(data.get("_id"))}
+                del data['_id']
+                update = {'$set': data}
+                result = await data_colection.find_one_and_update(filter, update)
+
+        if action == "current":
+            i = 0
+            while i < len(data_buf):
+                if (data_buf[i]['_id'] == object_id):
+                    data_buf = list(data_buf[:i] + data_buf[i+1:])
+                i = i + 1
+
+        if len(data_buf) > 0:
+            filter = {'_id': ObjectId(id), "status": "conflict"}
+            update = {'$set': {"data": data_buf}}
+            result = await upload_colection.find_one_and_update(filter, update)
+        else:
+            filter = {'_id': ObjectId(id), "status": "conflict"}
+            result = await upload_colection.delete_one(filter)
+
+        # Success
+        return JSONResponse(content={"message": f"File conflict resolved by action {action}", "data": 0}, status_code=201)
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Not Faund conflict", "error": str(e)}, status_code=404)
