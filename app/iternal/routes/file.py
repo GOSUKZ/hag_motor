@@ -70,14 +70,14 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         # Check if the control_data exists
         if (len(control_data) > 0):
 
-            asyncio.create_task(upload_generated_file(
+            task = asyncio.create_task(upload_generated_file(
                 data_colection, upload_colection, now, action_extended_id, control_data, list_data))
 
         else:
-            asyncio.create_task(upload_external_file(
+            task = asyncio.create_task(upload_external_file(
                 upload_colection, now, action_extended_id, list_data))
 
-        print("Success")
+        print("Success point")
         # Success
         return JSONResponse(content={"message": "File pre-upload successfully", "data": str(action_extended_id)}, status_code=202)
     except Exception as e:
@@ -355,6 +355,7 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
 
 # Functions for async upload files on background
 async def upload_generated_file(data_colection, upload_colection, now, action_extended_id, control_data, list_data):
+    print("start Function")
     # limit the reading area
     list_data = list_data[4:]
     for i in range(len(list_data)):
@@ -412,9 +413,11 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
 
         # * Есть вопросы, но пойдёт
         result = await upload_colection.insert_one(data_for_db)
+    print("Success Function")
 
 
 async def upload_external_file(upload_colection, now, action_extended_id, list_data):
+    print("start Function")
     # limit the reading area
     # * -1 because we don't read the total and 4 because we don't read header
     list_data = list_data[4:-1]
