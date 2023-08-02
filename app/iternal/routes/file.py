@@ -71,7 +71,6 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
         # Check if the control_data exists
         if (len(control_data) > 0):
-
             asyncio.create_task(upload_generated_file(data_colection,
                                                       upload_colection,
                                                       now,
@@ -84,7 +83,6 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
                                                      action_extended_id,
                                                      list_data))
 
-        print("Success point")
         # Success
         return JSONResponse(content={"message": "File pre-upload successfully", "data": str(action_extended_id)}, status_code=202)
     except Exception as e:
@@ -100,12 +98,17 @@ async def confirm_file(request: Request, id: str):
         control_colection = request.app.state.database.get_collection(
             "control_data")
 
-        filter = {'action_id': ObjectId(id), "status": "ok"}
+        filter = {'action_id': ObjectId(id)}
 
         result = await upload_colection.find_one(filter)
 
         # Check if id exists
         if (result is not None):
+
+            if (result.get('status') != 'ok'):
+                # Success
+                return JSONResponse(content={"message": "File status not ok", "data": {"action_id": str(id), "status": result.get('status')}}, status_code=400)
+
             data_for_db = result.get('data')
             control_data = result.get('control')
 
@@ -245,6 +248,10 @@ async def conflict(request: Request, id: str):
         filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
 
+        if (result is None):
+            # Exception
+            return JSONResponse(content={"message": "File not found"}, status_code=404)
+
         new_data = result.get("data")
         for data in new_data:
             del data["updated_at"]
@@ -267,7 +274,7 @@ async def conflict(request: Request, id: str):
         return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": new_data, "curren_data": curren_data}})
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": str(e)}, status_code=404)
+        return JSONResponse(content={"message": str(e)}, status_code=500)
 
 
 @router.get("/conflict/{id}/{object_id}")
@@ -279,6 +286,10 @@ async def conflict(request: Request, id: str, object_id: str):
 
         filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
+
+        if (result is None):
+            # Exception
+            return JSONResponse(content={"message": "File not found"}, status_code=404)
 
         data_buf = result.get("data")
         new_data = []
@@ -306,7 +317,7 @@ async def conflict(request: Request, id: str, object_id: str):
         return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": new_data, "curren_data": curren_data}})
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": str(e)}, status_code=404)
+        return JSONResponse(content={"message": str(e)}, status_code=500)
 
 
 @router.get("/conflict/{id}/{object_id}/{action}")
@@ -321,6 +332,10 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
 
         filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
+
+        if (result is None):
+            # Exception
+            return JSONResponse(content={"message": "File not found"}, status_code=404)
 
         data_buf = result.get("data")
         new_data = []
@@ -359,12 +374,11 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
         return JSONResponse(content={"message": f"File conflict resolved by action {action}", "data": 0}, status_code=201)
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": "Not Faund conflict", "error": str(e)}, status_code=404)
+        return JSONResponse(content={"message": "Not Faund conflict", "error": str(e)}, status_code=500)
 
 
 # Functions for async upload files on background
 async def upload_generated_file(data_colection, upload_colection, now, action_extended_id, control_data, list_data):
-    print("start Function")
     data_for_db = dict()
     data_for_db["action_id"] = action_extended_id
     data_for_db["created_at"] = now
@@ -417,7 +431,6 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
         data_for_db = {'$set': data_for_db}
 
     await upload_colection.update_one({"action_id": action_extended_id}, data_for_db)
-    print("Success Function")
 
 
 async def upload_external_file(upload_colection, now, action_extended_id, list_data):
