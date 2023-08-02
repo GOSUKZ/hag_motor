@@ -2,7 +2,7 @@ from asyncio import get_event_loop
 from app.iternal.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.iternal.db.sessiondb import RSessions
-from pymongo import DESCENDING
+from pymongo import DESCENDING, ASCENDING
 
 DATABASE_URL = settings.DATABASE_URL
 MONGO_INITDB_DATABASE = settings.MONGO_INITDB_DATABASE
@@ -17,7 +17,7 @@ def startup_event(app) -> AsyncIOMotorClient:
 
     try:
         control_data_colection = app.state.database.get_collection("control_data")
-        control_data_colection.create_index([("company_key", DESCENDING)], unique=True, background=True)
+        control_data_colection.create_index([("company_key", DESCENDING)], unique=True)
     except:
         pass
 
@@ -29,3 +29,4 @@ def startup_event(app) -> AsyncIOMotorClient:
 def shutdown_event(app):
     app.state.mongodb.close()
     print("shutdown_event")
+ 

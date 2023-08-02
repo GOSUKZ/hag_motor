@@ -4,6 +4,8 @@ from bson.objectid import ObjectId
 from datetime import datetime
 from io import BytesIO
 
+from pymongo import ASCENDING
+
 import pandas as pd
 
 import asyncio
@@ -70,15 +72,17 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         # Check if the control_data exists
         if (len(control_data) > 0):
 
-            task = asyncio.create_task(upload_generated_file(
-                data_colection, upload_colection, now, action_extended_id, control_data, list_data))
-            task.get_loop = asyncio.get_event_loop
-            print("task", task.get_name())
+            asyncio.create_task(upload_generated_file(data_colection,
+                                                      upload_colection,
+                                                      now,
+                                                      action_extended_id,
+                                                      control_data,
+                                                      list_data))
         else:
-            task = asyncio.create_task(upload_external_file(
-                upload_colection, now, action_extended_id, list_data))
-            task.get_loop = asyncio.get_event_loop
-            print("task", task.get_name())
+            asyncio.create_task(upload_external_file(upload_colection,
+                                                     now,
+                                                     action_extended_id,
+                                                     list_data))
 
         print("Success point")
         # Success
@@ -96,7 +100,7 @@ async def confirm_file(request: Request, id: str):
         control_colection = request.app.state.database.get_collection(
             "control_data")
 
-        filter = {'action_id': ObjectId(id)}
+        filter = {'action_id': ObjectId(id), "status": "ok"}
 
         result = await upload_colection.find_one(filter)
 
@@ -123,11 +127,11 @@ async def confirm_file(request: Request, id: str):
                         "upload_at": upload_at
                     }
 
-                    await control_colection.insert_one(insert)
+                    task = control_colection.insert_one(insert)
                 elif (result.get("upload_at") is None):
                     update = {"$set": {"upload_at": upload_at}}
 
-                    await control_colection.update_one(filter, update)
+                    task = control_colection.update_one(filter, update)
                 else:
                     upload_at = result.get("upload_at")
 
@@ -135,40 +139,34 @@ async def confirm_file(request: Request, id: str):
                 if (upload_at > export_at):
                     filter = {'action_id': ObjectId(id)}
                     update = {'$set': {"status": "conflict"}}
-                    result = await upload_colection.find_one_and_update(filter, update)
+                    result = await upload_colection.update_one(filter, update)
 
                     # Success
-                    return JSONResponse(content={"message": "File confirm conflict", "data": str(result['action_id'])}, status_code=409)
+                    return JSONResponse(content={"message": "File confirm conflict", "data": str(id)}, status_code=409)
+
+                # List for asincso tasks
+                tasks = []
 
                 insert_data = []
                 for line in data_for_db:
 
-                    data = dict(line)
-                    del data['_id']
+                    tasks.append(asyncio.create_task(confirm_file_coroutine(line,
+                                                                            data_colection,
+                                                                            insert_data)))
+                # Await all tasks
+                await asyncio.gather(*tasks)
 
-                    # Check if line contains _id field
-                    if (line.get('_id') is not None):
-                        filter = {'_id': ObjectId(line['_id'])}
-                        update = {"$set": data}
-                        result = await data_colection.find_one_and_update(filter, update)
-
-                        # Check if product exists
-                        if (result is None):
-                            insert_data.append(data)
-                    else:
-                        # if line not contains _id field
-                        insert_data.append(data)
+                await task
+                filter = {"company_key": "Dina_Cargo"}
+                update = {"$set": {"upload_at": export_at}}
+                task = control_colection.update_one(filter, update)
 
                 # Check if changes exist
                 if (len(insert_data) > 0):
-                    result = await data_colection.insert_many(insert_data)
-
-                filter = {"company_key": "Dina_Cargo"}
-                update = {"$set": {"upload_at": export_at}}
-                result = await control_colection.update_one(filter, update)
-
+                    await data_colection.insert_many(insert_data)
+                await task
             else:
-                result = await data_colection.insert_many(data_for_db)
+                await data_colection.insert_many(data_for_db)
 
         filter = {'action_id': ObjectId(id), "status": "ok"}
         result = await upload_colection.delete_one(filter)
@@ -187,9 +185,17 @@ async def export_excel(request: Request):
 
     try:
         database = request.app.state.mongodb["Dina_Cargo"]
-        upload_colection = database.get_collection("data")
+        upload_colection = database.get_collection("upload")
+        upload_colection.create_index([("action_id", ASCENDING)], unique=True)
+        upload_colection.create_index("created_at", expireAfterSeconds=5*60)
+    except Exception as e:
+        pass
 
-        result = await upload_colection.find({}).to_list(None)
+    try:
+        database = request.app.state.mongodb["Dina_Cargo"]
+        data_colection = database.get_collection("data")
+
+        result = await data_colection.find({}).to_list(None)
 
         for i in range(0, len(result)):
             del result[i]["created_at"]
@@ -359,6 +365,13 @@ async def conflict(request: Request, id: str, object_id: str, action: str):
 # Functions for async upload files on background
 async def upload_generated_file(data_colection, upload_colection, now, action_extended_id, control_data, list_data):
     print("start Function")
+    data_for_db = dict()
+    data_for_db["action_id"] = action_extended_id
+    data_for_db["created_at"] = now
+    data_for_db["data"] = []
+    data_for_db["status"] = "in progress"
+    task = upload_colection.insert_one(data_for_db)
+
     # limit the reading area
     list_data = list_data[4:]
     for i in range(len(list_data)):
@@ -377,50 +390,45 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
 
     data_buf_list = []
 
-    for line in data_list:
-        buf_data = dict(line)
-        # Check if id field is exist and valid
-        if (ObjectId.is_valid(line['_id'])):
-            filter = {"_id": ObjectId(line['_id'])}
-            result = await data_colection.find_one(filter)
-            # Check if product is exist
-            if (result is not None):
-                # Calculate the number of modified fields and check it
-                sum_chenges = sum(
-                    1 for key, value in buf_data.items() if result.get(key) != value) - 1
+    # List for asincso tasks
+    tasks = []
 
-                if sum_chenges > 0:
-                    buf_data["updated_at"] = now
-                    data_buf_list.append(buf_data)
-            else:
-                # If product not in connection
-                del buf_data["_id"]
-                buf_data["created_at"] = now
-                buf_data["updated_at"] = now
-                data_buf_list.append(buf_data)
-        else:
-            # If add new product
-            del buf_data["_id"]
-            buf_data["created_at"] = now
-            buf_data["updated_at"] = now
-            data_buf_list.append(buf_data)
+    for line in data_list:
+        tasks.append(asyncio.create_task(upload_generated_file_coroutine(data_colection,
+                                                                         line,
+                                                                         now,
+                                                                         data_buf_list)))
+
+    # Await all tasks
+    await asyncio.gather(*tasks)
+    await task
 
     # Check if changes exist
     if (len(data_buf_list) > 0):
         data_for_db = dict()
-        data_for_db["action_id"] = action_extended_id
-        data_for_db["created_at"] = now
-        data_for_db["control"] = control_data
         data_for_db["data"] = data_buf_list
+        data_for_db["control"] = control_data
         data_for_db["status"] = "ok"
+        data_for_db = {'$set': data_for_db}
+    else:
+        data_for_db = dict()
+        data_for_db["control"] = control_data
+        data_for_db["status"] = "no changes"
+        data_for_db = {'$set': data_for_db}
 
-        # * Есть вопросы, но пойдёт
-        result = await upload_colection.insert_one(data_for_db)
+    await upload_colection.update_one({"action_id": action_extended_id}, data_for_db)
     print("Success Function")
 
 
 async def upload_external_file(upload_colection, now, action_extended_id, list_data):
     print("start Function")
+    data_for_db = dict()
+    data_for_db["action_id"] = action_extended_id
+    data_for_db["created_at"] = now
+    data_for_db["data"] = []
+    data_for_db["status"] = "in progress"
+    task = upload_colection.insert_one(data_for_db)
+
     # limit the reading area
     # * -1 because we don't read the total and 4 because we don't read header
     list_data = list_data[4:-1]
@@ -440,14 +448,66 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
         line_for_db["updated_at"] = now
         data_list.append(line_for_db)
 
+    await task
+
     if (len(data_list) > 0):
         data_for_db = dict()
-        data_for_db["action_id"] = action_extended_id
-        data_for_db["created_at"] = now
         data_for_db["data"] = data_list
         data_for_db["status"] = "ok"
+        data_for_db = {'$set': data_for_db}
+    else:
+        data_for_db = dict()
+        data_for_db["status"] = "no changes"
+        data_for_db = {'$set': data_for_db}
 
-        # * Есть вопросы, но пойдёт
-        result = await upload_colection.insert_one(data_for_db)
+    await upload_colection.update_one({"action_id": action_extended_id}, data_for_db)
     print("Success Function")
+
+
+async def upload_generated_file_coroutine(data_colection, line, now, data_buf_list):
+    buf_data = dict(line)
+
+    # Check if id field is exist and valid
+    if (ObjectId.is_valid(line['_id'])):
+        filter = {"_id": ObjectId(line['_id'])}
+        result = await data_colection.find_one(filter)
+        # Check if product is exist
+        if (result is not None):
+            # Calculate the number of modified fields and check it
+            sum_chenges = sum(
+                1 for key, value in buf_data.items() if result.get(key) != value) - 1
+
+            if sum_chenges > 0:
+                buf_data["updated_at"] = now
+                data_buf_list.append(buf_data)
+        else:
+            # If product not in connection
+            del buf_data["_id"]
+            buf_data["created_at"] = now
+            buf_data["updated_at"] = now
+            data_buf_list.append(buf_data)
+    else:
+        # If add new product
+        del buf_data["_id"]
+        buf_data["created_at"] = now
+        buf_data["updated_at"] = now
+        data_buf_list.append(buf_data)
+
+
+async def confirm_file_coroutine(line, data_colection, insert_data):
+    data = dict(line)
+    del data['_id']
+
+    # Check if line contains _id field
+    if (line.get('_id') is not None):
+        filter = {'_id': ObjectId(line['_id'])}
+        update = {"$set": data}
+        result = await data_colection.find_one_and_update(filter, update)
+
+        # Check if product exists
+        if (result is None):
+            insert_data.append(data)
+    else:
+        # if line not contains _id field
+        insert_data.append(data)
 # ----------------------------------------------
