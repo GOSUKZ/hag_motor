@@ -5,7 +5,6 @@ import secrets
 import bcrypt
 
 
-SECRET_KEY = "secrets_key"
 REDIS_PASS = settings.REDIS_PASS
 REDIS_PORT = settings.REDIS_PORT
 REDIS_HOST = settings.REDIS_HOST
@@ -30,6 +29,7 @@ class RSessions:
 
         # Cancel previous session if you are logged in
         session = self.__get_session(request)
+
         if len(session) > 0:
             self.end_session(request, response)
 
@@ -45,10 +45,9 @@ class RSessions:
         self.__db.expire(session_id, self.__expiry)
 
         # Setting cookie
-        response.set_cookie(key="session_id",
-                            value=session_id,
-                            httponly=True,
-                            secure=True)
+        response.set_cookie(key="session_id", value=session_id)
+        
+        print('session_id: ', session_id)
         return session_id
 
     # Get session data
@@ -92,11 +91,11 @@ class RSessions:
         except Exception as e:
             pass
 
-    def __generate_hashed_key(value: str) -> bytes:
+    def generate_hashed_key(self, value: str) -> bytes:
         # Hash the "value" using bcrypt with the salt
-        hashed_key = bcrypt.hashpw(value.encode(), SECRET_KEY)
+        hashed_key = bcrypt.hashpw(value.encode('utf-8'), bcrypt.gensalt())
         return hashed_key
 
-    def __verify_key(value: str, hashed_key: bytes) -> bool:
+    def verify_key(self, value: str, hashed_key: bytes) -> bool:
         # Verify the "value" by checking if it matches the hashed_key
-        return bcrypt.checkpw(value.encode(), hashed_key)
+        return bcrypt.checkpw(value.encode('utf-8'), hashed_key) or value == hashed_key

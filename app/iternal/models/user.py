@@ -17,5 +17,17 @@ class User(BaseModel):
             }
         }
 
+class RegUser(BaseModel):
+    login: str
+    password: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                'login': "admin",
+                'password': "admin"
+            }
+        }
+
 class UpdateUser(User):
     id: str
