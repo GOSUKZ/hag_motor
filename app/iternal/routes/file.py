@@ -15,9 +15,18 @@ router = APIRouter(
     tags=["Files"]
 )
 
+# TODO: Выгрузка ограничить
 
 @router.post("/upload/")
-async def upload_file(request: Request, file: UploadFile = File(...)):
+async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
+    session = request.app.state.r_session.protected_session(request, response, 1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    company_key = session.get("company_key")
+
     # Get now data
     now = datetime.utcnow()
 
@@ -65,7 +74,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         list_data = df_filled.to_numpy().tolist()  # Convert to list
 
         # Connect to DB connection
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
@@ -91,9 +100,17 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
 
 @router.post("/confirm/{id}")
-async def confirm_file(request: Request, id: str):
+async def confirm_file(request: Request, response: Response, id: str):
+    session = request.app.state.r_session.protected_session(request, response, 1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    company_key = session.get("company_key")
+
     try:
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
         control_colection = request.app.state.database.get_collection(
             "control_data")
@@ -120,21 +137,21 @@ async def confirm_file(request: Request, id: str):
                 upload_at = 0
                 export_at = control_data.get("export_at")
 
-                filter = {"company_key": "Dina_Cargo"}
+                filter = {"company_key": company_key}
                 result = await control_colection.find_one(filter)
 
                 # Check if upload_at exists
                 if (result is None):
                     insert = {
-                        "company_key": "Dina_Cargo",
+                        "company_key": company_key,
                         "upload_at": upload_at
                     }
 
-                    task = control_colection.insert_one(insert)
+                    await control_colection.insert_one(insert)
                 elif (result.get("upload_at") is None):
                     update = {"$set": {"upload_at": upload_at}}
 
-                    task = control_colection.update_one(filter, update)
+                    await control_colection.update_one(filter, update)
                 else:
                     upload_at = result.get("upload_at")
 
@@ -142,7 +159,7 @@ async def confirm_file(request: Request, id: str):
                 if (upload_at > export_at):
                     filter = {'action_id': ObjectId(id)}
                     update = {'$set': {"status": "conflict"}}
-                    result = await upload_colection.update_one(filter, update)
+                    await upload_colection.update_one(filter, update)
 
                     # Success
                     return JSONResponse(content={"message": "File confirm conflict", "data": str(id)}, status_code=409)
@@ -159,8 +176,7 @@ async def confirm_file(request: Request, id: str):
                 # Await all tasks
                 await asyncio.gather(*tasks)
 
-                await task
-                filter = {"company_key": "Dina_Cargo"}
+                filter = {"company_key": company_key}
                 update = {"$set": {"upload_at": export_at}}
                 task = control_colection.update_one(filter, update)
 
@@ -182,12 +198,20 @@ async def confirm_file(request: Request, id: str):
 
 
 @router.get("/export_excel/")
-async def export_excel(request: Request):
+async def export_excel(request: Request, response: Response):
+    session = request.app.state.r_session.protected_session(request, response, 1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    company_key = session.get("company_key")
+
     # Get now data
     now = datetime.utcnow()
 
     try:
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
         upload_colection.create_index([("action_id", ASCENDING)], unique=True)
         upload_colection.create_index("created_at", expireAfterSeconds=5*60)
@@ -195,7 +219,7 @@ async def export_excel(request: Request):
         pass
 
     try:
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         data_colection = database.get_collection("data")
 
         result = await data_colection.find({}).to_list(None)
@@ -220,7 +244,7 @@ async def export_excel(request: Request):
                          index=False, startrow=4, header="__control_data")
 
         # Set the file's name
-        file_name = "exported_data.xlsx"
+        file_name = f"exported_data_{company_key}.xlsx"
         # Prepare the response headers
         response_headers = {
             "Content-Disposition": f"attachment; filename={file_name}",
@@ -239,9 +263,17 @@ async def export_excel(request: Request):
 
 
 @router.get("/conflict/{id}")
-async def conflict(request: Request, id: str):
+async def conflict(request: Request, response: Response, id: str):
+    session = request.app.state.r_session.protected_session(request, response, 1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    company_key = session.get("company_key")
+
     try:
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
@@ -278,9 +310,17 @@ async def conflict(request: Request, id: str):
 
 
 @router.get("/conflict/{id}/{object_id}")
-async def conflict(request: Request, id: str, object_id: str):
+async def conflict(request: Request, response: Response, id: str, object_id: str):
+    session = request.app.state.r_session.protected_session(request, response, 1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    company_key = session.get("company_key")
+
     try:
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
@@ -321,12 +361,20 @@ async def conflict(request: Request, id: str, object_id: str):
 
 
 @router.get("/conflict/{id}/{object_id}/{action}")
-async def conflict(request: Request, id: str, object_id: str, action: str):
+async def conflict(request: Request, response: Response, id: str, object_id: str, action: str):
+    session = request.app.state.r_session.protected_session(request, response, 1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    company_key = session.get("company_key")
+
     try:
         if action not in ["new", "current"]:
             raise Exception("action not supported [new, current]")
 
-        database = request.app.state.mongodb["Dina_Cargo"]
+        database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
         data_colection = database.get_collection("data")
 
@@ -509,11 +557,13 @@ async def upload_generated_file_coroutine(data_colection, line, now, data_buf_li
 
 async def confirm_file_coroutine(line, data_colection, insert_data):
     data = dict(line)
-    del data['_id']
 
     # Check if line contains _id field
     if (line.get('_id') is not None):
         filter = {'_id': ObjectId(line['_id'])}
+
+        del data['_id']
+
         update = {"$set": data}
         result = await data_colection.find_one_and_update(filter, update)
 

@@ -70,12 +70,15 @@ class RSessions:
             pass
 
     # Verify session
-    def protected_session(self, request: Request, response: Response, role: int = 0) -> dict:
+    def protected_session(self, request: Request, response: Response, role_from: int = 0, role_to: int = None) -> dict:
         session_db = self.__get_session(request)
         if len(session_db) >= 0:
             role_db = session_db.get('role')
-            if not role_db or int(role_db) < role:
-                self.end_session(request, response)
+            if not role_db or int(role_db) < role_from:
+                # self.end_session(request, response) # ? end session
+                return {}
+            if not role_to and int(role_to) > role_to:
+                # self.end_session(request, response) # ? end session
                 return {}
             self.__update_expiry(request)
             return session_db

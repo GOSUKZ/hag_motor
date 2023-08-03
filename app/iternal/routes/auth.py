@@ -12,10 +12,15 @@ router = APIRouter(
 
 
 @router.post("/login")
-async def post_login(request: Request, response: Response, login: str, password: str):
+async def post_login(request: Request, response: Response, payload: RegUser = Body(...)):
+    payload = jsonable_encoder(payload)
+
     # Connect to DB connection
-    database = request.app.state.mongodb["Dina_Cargo"]
+    database = request.app.state.database
     users_colection = database.get_collection("users")
+
+    password = payload.get('password')
+    login = payload.get('login')
 
     filter = {'login': login}
     result = await users_colection.find_one(filter)
@@ -23,28 +28,69 @@ async def post_login(request: Request, response: Response, login: str, password:
     if (result is None):
         # Exception
         return JSONResponse(content={"message": 'Invalid login', "data": 0}, status_code=403)
-    
+
     hash_password = result.get('password')
-    role = result.get('role')
-    company_key = result.get('company_key')
-    
-    verification = request.app.state.r_session.verify_key(password, hash_password)
+    company_keys = result.get('company_key')
+
+    verification = request.app.state.r_session.verify_key(
+        password, hash_password)
 
     if (not verification):
         # Exception
         return JSONResponse(content={"message": 'Invalid password', "data": 0}, status_code=403)
-    
+
     # Verify login and password
-    # TODO: hash password
-    session_data = {'username': login, 'role': role, 'company_key': company_key}
-    session_id = request.app.state.r_session.create_session(request, response, session_data)
-    return {'message': 'Login successful', 'session_id': session_id}
+    session_data = {'login': login, 'role': -1}
+    session_id = request.app.state.r_session.create_session(request,
+                                                            response,
+                                                            session_data)
+
+    return {'message': 'Success login', 'data': {"session_id": session_id, "company_keys": company_keys}}
+
+
+@router.post("/login/{company_key}")
+async def post_login(request: Request, response: Response, company_key: str):
+    session = request.app.state.r_session.protected_session(
+        request, response, -1)
+
+    if len(session) <= 0:
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+    # Connect to DB connection
+    database = request.app.state.database
+    users_colection = database.get_collection("users")
+
+    login = session.get("login")
+
+    filter = {'login': login}
+    result = await users_colection.find_one(filter)
+
+    role = result.get("role")
+    company_keys = result.get("company_key")
+
+    if (company_key not in company_keys):
+        # Exception
+        return JSONResponse(content={"message": "Invalid company_key"}, status_code=403)
+
+    # Verify login and password
+    session_data = {'login': login, 'role': role, "company_key": company_key}
+    session_id = request.app.state.r_session.create_session(request,
+                                                            response,
+                                                            session_data)
+
+    filter = {'login': login}
+    update = {'$set': {'session_id': session_id}}
+
+    users_colection.update_one(filter, update)
+
+    return {'message': 'Success login', 'data': {"session_id": session_id, "company_key": company_key}}
 
 
 @router.post('/logout')
 def post_logout(request: Request, response: Response) -> dict:
     request.app.state.r_session.end_session(request, response)
-    return {'message': 'Logout successful', 'session_id': 0}
+    return {'message': 'Logout successful', 'data': 0}
 
 
 @router.get('/protected')
@@ -55,7 +101,7 @@ def get_protected(request: Request, response: Response) -> dict:
         return {'message': 'Access granted'}
     else:
         return {'message': 'Access denied'}
-    
+
 
 @router.post('/restricted/')
 async def post_restricted(request: Request, payload: RegUser = Body(...)):
@@ -64,16 +110,26 @@ async def post_restricted(request: Request, payload: RegUser = Body(...)):
     now = datetime.utcnow()
 
     # Connect to DB connection
-    database = request.app.state.mongodb["Dina_Cargo"]
+    database = request.app.state.database
     users_colection = database.get_collection("users")
 
-    payload["role"] = 1
-    payload["company_key"] = "Dina_Cargo"
+    login = payload.get('login')
+
+    filter = {"login": login}
+    result = await users_colection.find_one(filter)
+
+    if (result is not None):
+        # Exception
+        return JSONResponse(content={"message": 'Login already exists', "data": 0}, status_code=403)
+
+    payload["role"] = 1000
+    payload["company_key"] = ["Dina_Cargo"]
     payload["created_at"] = now
 
-    payload["password"] = request.app.state.r_session.generate_hashed_key(payload["password"])
+    payload["password"] = request.app.state.r_session.generate_hashed_key(
+        payload["password"])
 
     await users_colection.insert_one(payload)
 
-    print('payload: ', payload)
-
+    # Success
+    return JSONResponse(content={"message": "User registered", "data": 0}, status_code=201)

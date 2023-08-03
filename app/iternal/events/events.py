@@ -20,6 +20,11 @@ def startup_event(app) -> AsyncIOMotorClient:
         control_data_colection.create_index([("company_key", DESCENDING)], unique=True)
     except:
         pass
+    try:
+        users_colection = app.state.database.get_collection("users")
+        users_colection.create_index([("login", ASCENDING)], unique=True)
+    except:
+        pass
 
     app.state.r_session: RSessions = RSessions()
 
