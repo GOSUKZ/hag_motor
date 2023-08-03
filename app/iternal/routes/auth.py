@@ -103,8 +103,8 @@ def get_protected(request: Request, response: Response) -> dict:
         return {'message': 'Access denied'}
 
 
-@router.post('/restricted/')
-async def post_restricted(request: Request, payload: RegUser = Body(...)):
+@router.post('/registration/')
+async def post_registration(request: Request, payload: RegUser = Body(...)):
     payload = jsonable_encoder(payload)
 
     now = datetime.utcnow()
@@ -132,4 +132,4 @@ async def post_restricted(request: Request, payload: RegUser = Body(...)):
     await users_colection.insert_one(payload)
 
     # Success
-    return JSONResponse(content={"message": "User registered", "data": 0}, status_code=201)
+    return JSONResponse(content={"message": "Registration successfully", "data": 0}, status_code=201)

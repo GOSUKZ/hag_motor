@@ -11,6 +11,8 @@ router = APIRouter(
 )
 
 # TODO: Группировка по полям
+# TODO: типизация данных
+# TODO: Изменение !!!
 
 
 @router.get('/')
@@ -34,8 +36,6 @@ async def get_docs(request: Request, response: Response, start: int = 0, end: in
             return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
         company_key = session.get("company_key")
-
-        # .sort('i', -1)
 
         # Connect to DB connection
         database = request.app.state.mongodb[company_key]
@@ -155,6 +155,42 @@ async def get_docs_sorted_grouping(request: Request, response: Response, start: 
 
         # Success
         return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count}})
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+@router.post('/{document_id}/')
+async def post_update(request: Request, response: Response, document_id: str, payload: dict = Body(...)) -> dict:
+    try:
+        payload = jsonable_encoder(payload)
+
+        session = request.app.state.r_session.protected_session(
+            request, response, 99)
+
+        if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.mongodb[company_key]
+        data_colection = database.get_collection("data")
+
+        filter = {'_id': ObjectId(document_id)}
+        update = {'$set': payload}
+        result = await data_colection.find_one_and_update(filter, update)
+
+        if (result is None):
+            # Exception
+            return JSONResponse(content={"message": "Document not found"}, status_code=404)
+
+        for key in result.keys():
+            result[key] = str(result[key])
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": [result]})
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
