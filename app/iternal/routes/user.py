@@ -4,6 +4,9 @@ from fastapi.encoders import jsonable_encoder
 from bson.objectid import ObjectId
 from datetime import datetime
 from app.iternal.models.user import RegUser
+from app.iternal.db.updatelog import CustomUpdate
+
+from app.iternal.serializers.document import get_document
 
 router = APIRouter(
     prefix="/user",
@@ -46,9 +49,17 @@ async def get_docs(request: Request, response: Response, start: int = 0, end: in
 
         cursor = data_colection.find().skip(skip).limit(limit)
         async for document in cursor:
-            for key in document.keys():
-                document[key] = str(document[key])
+            # for key in document.keys():
+            #     document[key] = str(document[key])
+
+            document = get_document(document)
             documents.append(document)
+
+        for document in documents:
+            # for key in document.keys():
+            #     document[key] = str(document[key])
+
+            print(get_document(document))
 
         documents_count = await task
 
@@ -177,9 +188,14 @@ async def post_update(request: Request, response: Response, document_id: str, pa
         database = request.app.state.mongodb[company_key]
         data_colection = database.get_collection("data")
 
+        myLoggerUpdate = CustomUpdate(data_colection)
+
         filter = {'_id': ObjectId(document_id)}
+        payload = get_document(payload)
+        print('payload: ', payload)
         update = {'$set': payload}
-        result = await data_colection.find_one_and_update(filter, update)
+        # result = await data_colection.find_one_and_update(filter, update)
+        result = await myLoggerUpdate.find_update(filter, update)
 
         if (result is None):
             # Exception
