@@ -447,8 +447,8 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:20]
 
-    title_list = ['_id', 'Дата', 'Место отправки', 'Вид отправки', 'Телефон клиента', 'Код клиента', 'Описание груза ', 'Количество мест', 'Вес', 'Плотность места', 'Плотность',
-                  'Место доставки', 'За упаковку', 'За доставку', 'Разное', 'Страховка', 'Цена за единицу', 'Общая сумма', 'Дата прихода', 'Количество полученных позицый']
+    title_list = ['_id', 'date', 'place_sending', 'type', 'phone', 'code', 'description', 'coount', 'weight', 'space', 'density',
+                  'place_delivery', 'packaging', 'delivery', 'other', 'insurance', 'unit_price', 'total', 'arrival_date', 'received_positions']
 
     data_list = []
     for i in range(len(list_data)):
@@ -504,8 +504,8 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:19]
 
-    title_list = ['Дата', 'Место отправки', 'Вид отправки', 'Телефон клиента', 'Код клиента', 'Описание груза ', 'Количество мест', 'Вес', 'Плотность места', 'Плотность',
-                  'Место доставки', 'За упаковку', 'За доставку', 'Разное', 'Страховка', 'Цена за единицу', 'Общая сумма', 'Дата прихода', 'Количество полученных позицый']
+    title_list = ['date', 'place_sending', 'type', 'phone', 'code', 'description', 'coount', 'weight', 'space', 'density',
+                  'place_delivery', 'packaging', 'delivery', 'other', 'insurance', 'unit_price', 'total', 'arrival_date', 'received_positions']
 
     data_list = []
     for i in range(len(list_data[1:])):
