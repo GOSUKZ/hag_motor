@@ -275,7 +275,7 @@ async def conflict(request: Request, response: Response, id: str):
     try:
         database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
-        data_colection = database.get_collection("data")
+        # data_colection = database.get_collection("data")
 
         filter = {'action_id': ObjectId(id), "status": "conflict"}
         result = await upload_colection.find_one(filter)
@@ -285,25 +285,32 @@ async def conflict(request: Request, response: Response, id: str):
             return JSONResponse(content={"message": "File not found"}, status_code=404)
 
         new_data = result.get("data")
-        for data in new_data:
-            del data["updated_at"]
-            for key in data.keys():
-                data[key] = str(data.get(key))
-        curren_data = []
+        # for data in new_data:
+        #     del data["updated_at"]
+        #     for key in data.keys():
+        #         data[key] = str(data.get(key))
 
+        data_id = []
         for data in new_data:
-            filter = {'_id': ObjectId(data.get("_id"))}
-            result = await data_colection.find_one(filter)
-            if result is not None:
-                del result["updated_at"]
-                del result["created_at"]
+            id = data.get("_id")
+            if (id is not None):
+                data_id.append(str(id))
 
-                for key in result.keys():
-                    result[key] = str(result.get(key))
-                curren_data.append(result)
+        # curren_data = []
+
+        # for data in new_data:
+        #     filter = {'_id': ObjectId(data.get("_id"))}
+        #     result = await data_colection.find_one(filter)
+        #     if result is not None:
+        #         del result["updated_at"]
+        #         del result["created_at"]
+
+        #         for key in result.keys():
+        #             result[key] = str(result.get(key))
+        #         curren_data.append(result)
 
         # Success
-        return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": new_data, "curren_data": curren_data}})
+        return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": data_id, "new_data_length": len(new_data)}})
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": str(e)}, status_code=500)
@@ -372,7 +379,8 @@ async def conflict(request: Request, response: Response, id: str, object_id: str
 
     try:
         if action not in ["new", "current"]:
-            raise Exception("action not supported [new, current]")
+            # Exception
+            return JSONResponse(content={"message": "action not supported [new, current]"}, status_code=403)
 
         database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")

@@ -77,7 +77,7 @@ class RSessions:
             if not role_db or int(role_db) < role_from:
                 # self.end_session(request, response) # ? end session
                 return {}
-            if not role_to and int(role_to) > role_to:
+            if (role_to and (int(role_db) > role_to and int(role_db) < 99)):
                 # self.end_session(request, response) # ? end session
                 return {}
             self.__update_expiry(request)
