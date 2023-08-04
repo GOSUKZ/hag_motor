@@ -74,7 +74,7 @@ def is_jsonable(x):
         return False
 
 
-def is_convertable(s: str) -> int | float | str:
+def is_convertable(s: str):
     try:
         num = int(s)
         return num
