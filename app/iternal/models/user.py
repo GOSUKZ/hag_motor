@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class User(BaseModel):
@@ -20,6 +21,9 @@ class User(BaseModel):
 class RegUser(BaseModel):
     login: str
     password: str
+
+    role: int = 0
+    company_key: list = []
 
     class Config:
         schema_extra = {

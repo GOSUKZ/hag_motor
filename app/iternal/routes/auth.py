@@ -101,35 +101,3 @@ def get_protected(request: Request, response: Response) -> dict:
         return {'message': 'Access granted'}
     else:
         return {'message': 'Access denied'}
-
-
-@router.post('/registration/')
-async def post_registration(request: Request, payload: RegUser = Body(...)):
-    payload = jsonable_encoder(payload)
-
-    now = datetime.utcnow()
-
-    # Connect to DB connection
-    database = request.app.state.database
-    users_colection = database.get_collection("users")
-
-    login = payload.get('login')
-
-    filter = {"login": login}
-    result = await users_colection.find_one(filter)
-
-    if (result is not None):
-        # Exception
-        return JSONResponse(content={"message": 'Login already exists', "data": 0}, status_code=403)
-
-    payload["role"] = 1000
-    payload["company_key"] = ["Dina_Cargo"]
-    payload["created_at"] = now
-
-    payload["password"] = request.app.state.r_session.generate_hashed_key(
-        payload["password"])
-
-    await users_colection.insert_one(payload)
-
-    # Success
-    return JSONResponse(content={"message": "Registration successfully", "data": 0}, status_code=201)
