@@ -6,7 +6,9 @@ from datetime import datetime
 from app.iternal.models.user import RegUser
 from app.iternal.db.updatelog import CustomUpdate
 
-from app.iternal.serializers.document import get_document
+from app.iternal.serializers.document import get_serialize_document, is_convertable
+
+from app.iternal.models.document import UpdateDocument
 
 router = APIRouter(
     prefix="/user",
@@ -49,17 +51,8 @@ async def get_docs(request: Request, response: Response, start: int = 0, end: in
 
         cursor = data_colection.find().skip(skip).limit(limit)
         async for document in cursor:
-            # for key in document.keys():
-            #     document[key] = str(document[key])
-
-            document = get_document(document)
+            document = get_serialize_document(document)
             documents.append(document)
-
-        for document in documents:
-            # for key in document.keys():
-            #     document[key] = str(document[key])
-
-            print(get_document(document))
 
         documents_count = await task
 
@@ -152,14 +145,20 @@ async def get_docs_sorted_grouping(request: Request, response: Response, start: 
 
         documents = []
 
-        task = data_colection.count_documents({})
+        if (fild_key.find('date') >= 0):
+            if (len(fild_value) <= len("2023-01-16 00:00:00")):
+                print('fild_value: ', fild_value)
+                fild_value = f"{fild_value}.000000"
+            fild_value = datetime.strptime(fild_value, "%Y-%m-%d %H:%M:%S.%f")
+        else:
+            fild_value = is_convertable(fild_value)
 
-        cursor = data_colection.find({fild_key: fild_value}).sort(
-            fild_key, sorted).skip(skip).limit(limit)
+        task = data_colection.count_documents({fild_key: fild_value})
+
+        cursor = data_colection.find({fild_key: fild_value}).sort(fild_key,
+                                                                  sorted).skip(skip).limit(limit)
         async for document in cursor:
-            for key in document.keys():
-                document[key] = str(document[key])
-            documents.append(document)
+            documents.append(get_serialize_document(document))
 
         documents_count = await task
 
@@ -171,7 +170,7 @@ async def get_docs_sorted_grouping(request: Request, response: Response, start: 
 
 
 @router.post('/{document_id}/')
-async def post_update(request: Request, response: Response, document_id: str, payload: dict = Body(...)) -> dict:
+async def post_update(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)) -> dict:
     try:
         payload = jsonable_encoder(payload)
 
@@ -191,9 +190,20 @@ async def post_update(request: Request, response: Response, document_id: str, pa
         myLoggerUpdate = CustomUpdate(data_colection)
 
         filter = {'_id': ObjectId(document_id)}
-        payload = get_document(payload)
-        print('payload: ', payload)
+
+        # Convert str to datetime if exists reservation name date
+        for key, value in payload.items():
+            if (value and (key.find('date') >= 0)):
+                if (len(value) <= len("2023-01-16 00:00:00")):
+                    payload[key] = f"{value}.000000"
+                payload[key] = datetime.strptime(
+                    payload[key], "%Y-%m-%d %H:%M:%S.%f")
+
+        payload = {k: v for k, v in payload.items() if v is not None and k in [
+            '_id', 'created_at', 'updated_at']}
+
         update = {'$set': payload}
+
         # result = await data_colection.find_one_and_update(filter, update)
         result = await myLoggerUpdate.find_update(filter, update)
 
@@ -201,8 +211,7 @@ async def post_update(request: Request, response: Response, document_id: str, pa
             # Exception
             return JSONResponse(content={"message": "Document not found"}, status_code=404)
 
-        for key in result.keys():
-            result[key] = str(result[key])
+        result = get_serialize_document(result)
 
         # Success
         return JSONResponse(content={"message": "Successfully", "data": [result]})

@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, Response
 from bson.objectid import ObjectId
 from datetime import datetime
 from io import BytesIO
-
+from app.iternal.serializers.document import get_serialize_document
 from pymongo import ASCENDING
 
 import pandas as pd
@@ -343,9 +343,7 @@ async def conflict(request: Request, response: Response, id: str, object_id: str
         for data in data_buf:
             if (data['_id'] == object_id):
                 del data["updated_at"]
-                for key in data.keys():
-                    data[key] = str(data.get(key))
-                new_data.append(data)
+                new_data.append(get_serialize_document(data))
 
         curren_data = []
 
@@ -355,10 +353,7 @@ async def conflict(request: Request, response: Response, id: str, object_id: str
             if result is not None:
                 del result["updated_at"]
                 del result["created_at"]
-
-                for key in result.keys():
-                    result[key] = str(result.get(key))
-                curren_data.append(result)
+                curren_data.append(get_serialize_document(result))
 
         # Success
         return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": new_data, "curren_data": curren_data}})

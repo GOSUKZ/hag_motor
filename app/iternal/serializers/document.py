@@ -1,8 +1,33 @@
 from bson.objectid import ObjectId
 from datetime import datetime
-import asyncio
+
+from json import dumps
 
 # Define the format of the date and time in the string
+# buf_data = dict(data)
+# for key, value in data.items():
+#     try:
+#         if type(value) is str:
+
+#             if model[key] == "datetime":
+#                 # if len(value) <= len("2023-01-16 00:00:00"):
+#                 #     data[key] = buf_data[key]+'.000000'
+#                 buf_data[key] = types[model[key]](buf_data[key], date_format)
+
+#             elif value == "None":
+#                 buf_data[key] = None
+
+#             else:
+#                 buf_data[key] = types[model[key]](value)
+#         else:
+#             buf_data[key] = str(value)
+
+#     except:
+#         del buf_data[key]
+#         print('key: ', key)
+
+# return buf_data
+
 date_format = "%Y-%m-%d %H:%M:%S.%f"
 
 temp_model = {
@@ -41,26 +66,35 @@ types = {
 }
 
 
-def get_document(data: dict, model: dict = temp_model) -> dict:
+def is_jsonable(x):
+    try:
+        dumps(x)
+        return True
+    except (TypeError, OverflowError):
+        return False
+
+
+def is_convertable(s: str) -> int | float | str:
+    try:
+        num = int(s)
+        return num
+    except ValueError:
+        pass
+
+    try:
+        num = float(s)
+        return num
+    except ValueError:
+        pass
+
+    return s
+
+
+def get_serialize_document(data: dict) -> dict:
     buf_data = dict(data)
-    for key, value in data.items():
-        try:
-            if type(value) is str:
 
-                if model[key] == "datetime":
-                    # if len(value) <= len("2023-01-16 00:00:00"):
-                    #     data[key] = buf_data[key]+'.000000'
-                    buf_data[key] = types[model[key]](buf_data[key], date_format)
-
-                elif value == "None":
-                    buf_data[key] = None
-
-                else:
-                    buf_data[key] = types[model[key]](value)
-            else:
-                buf_data[key] = str(value)
-
-        except:
-            del buf_data[key]
+    for key, value in buf_data.items():
+        if not is_jsonable(value):
+            buf_data[key] = str(value)
 
     return buf_data
