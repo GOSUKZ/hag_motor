@@ -15,22 +15,19 @@ router = APIRouter(
     tags=["User"],
 )
 
-# TODO: Группировка по полям и типизация данных
-# TODO: Изменение !!!
-
 
 @router.get('/')
-async def get_docs(request: Request, response: Response, start: int = 0, end: int = 10) -> dict:
+async def get_docs(request: Request, response: Response, page: int = 0, length: int = 10) -> dict:
     try:
-        if ((start > end) or (start < 0) or (end < 0)):
+        if ((page < 0) or (length < 0)):
             # Exception
-            return JSONResponse(content={"message": "Start or end out of range"}, status_code=403)
+            return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
 
         # Calculate the number of documents to skip
-        skip = start
+        skip = (page * length)
 
         # Calculate the number of documents to retrieve
-        limit = end - start + 1
+        limit = (skip + length) - skip
 
         session = request.app.state.r_session.protected_session(
             request, response, 99)
@@ -64,21 +61,21 @@ async def get_docs(request: Request, response: Response, start: int = 0, end: in
 
 
 @router.get('/{filde_key}/')
-async def get_docs_sorted(request: Request, response: Response, start: int = 0, end: int = 10, sorted: int = 1, fild_key: str = '_id') -> dict:
+async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, fild_key: str = '_id') -> dict:
     try:
-        if ((start > end) or (start < 0) or (end < 0)):
+        if ((page < 0) or (length < 0)):
             # Exception
-            return JSONResponse(content={"message": "Start or end out of range"}, status_code=403)
+            return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
 
         if ((sorted > 1) or (sorted < -1) or (sorted == 0)):
             # Exception
             return JSONResponse(content={"message": "sorted out of range (1 - ASCENDING, -1 - DESCENDING)"}, status_code=403)
 
         # Calculate the number of documents to skip
-        skip = start
+        skip = (page * length)
 
         # Calculate the number of documents to retrieve
-        limit = end - start + 1
+        limit = (skip + length) - skip
 
         session = request.app.state.r_session.protected_session(
             request, response, 99)
@@ -100,9 +97,7 @@ async def get_docs_sorted(request: Request, response: Response, start: int = 0, 
         cursor = data_colection.find({}).sort(
             fild_key, sorted).skip(skip).limit(limit)
         async for document in cursor:
-            for key in document.keys():
-                document[key] = str(document[key])
-            documents.append(document)
+            documents.append(get_serialize_document(document))
 
         documents_count = await task
 
@@ -114,21 +109,21 @@ async def get_docs_sorted(request: Request, response: Response, start: int = 0, 
 
 
 @router.get('/{filde_key}/{fild_value}/')
-async def get_docs_sorted_grouping(request: Request, response: Response, start: int = 0, end: int = 10, sorted: int = 1, fild_key: str = '_id', fild_value: str = None) -> dict:
+async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, fild_key: str = '_id', fild_value: str = None) -> dict:
     try:
-        if ((start > end) or (start < 0) or (end < 0)):
+        if ((page < 0) or (length < 0)):
             # Exception
-            return JSONResponse(content={"message": "Start or end out of range"}, status_code=403)
+            return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
 
         if ((sorted > 1) or (sorted < -1) or (sorted == 0)):
             # Exception
             return JSONResponse(content={"message": "sorted out of range (1 - ASCENDING, -1 - DESCENDING)"}, status_code=403)
 
         # Calculate the number of documents to skip
-        skip = start
+        skip = (page * length)
 
         # Calculate the number of documents to retrieve
-        limit = end - start + 1
+        limit = (skip + length) - skip
 
         session = request.app.state.r_session.protected_session(
             request, response, 99)
