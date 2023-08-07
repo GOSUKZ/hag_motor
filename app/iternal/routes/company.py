@@ -63,8 +63,8 @@ async def get_docs(request: Request, response: Response, page: int = 0, length: 
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
-@router.get('/{filde_key}/')
-async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, fild_key: str = '_id') -> dict:
+@router.get('/{sort_key}/')
+async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id') -> dict:
     try:
         if ((page < 0) or (length < 0)):
             # Exception
@@ -97,8 +97,8 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
 
         task = data_colection.count_documents({})
 
-        cursor = data_colection.find({}).sort(
-            fild_key, sorted).skip(skip).limit(limit)
+        cursor = data_colection.find({}).sort(sort_key,
+                                              sorted).skip(skip).limit(limit)
         async for document in cursor:
             documents.append(get_serialize_document(document))
 
@@ -113,8 +113,8 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
-@router.get('/{filde_key}/{fild_value}/')
-async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, fild_key: str = '_id', fild_value: str = None) -> dict:
+@router.get('/{sort_key}/{filde_key}/{fild_value}/')
+async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id', fild_key: str = 'weight', fild_value: str = '10.5') -> dict:
     try:
         if ((page < 0) or (length < 0)):
             # Exception
@@ -155,7 +155,7 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
 
         task = data_colection.count_documents({fild_key: fild_value})
 
-        cursor = data_colection.find({fild_key: fild_value}).sort(fild_key,
+        cursor = data_colection.find({fild_key: fild_value}).sort(sort_key,
                                                                   sorted).skip(skip).limit(limit)
         async for document in cursor:
             documents.append(get_serialize_document(document))
