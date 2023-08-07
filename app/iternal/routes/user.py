@@ -98,8 +98,13 @@ async def post_manager(request: Request, response: Response, payload: ChangeUser
         users_collection = database.get_collection("users")
 
         filter = {'login': admin_login}
-        company_keys = await users_collection.find_one(filter, {'company_key': 1})
-        company_keys = company_keys['company_key']
+        result = await users_collection.find_one(filter, {'company_key': 1})
+
+        if (result is None):
+            # Exception
+            return JSONResponse(content={"message": 'Invalid login', "data": 0}, status_code=403)
+        
+        company_keys = result['company_key']
 
         payload = jsonable_encoder(payload)
 
@@ -121,14 +126,15 @@ async def post_manager(request: Request, response: Response, payload: ChangeUser
         filter = {'login': login, 'role': {'$lte': admin_role}}
 
         myLoggerUpdate = CustomUpdate(users_collection)
-
-        # result = await data_collection.find_one_and_update(filter, update)
-        result = await myLoggerUpdate.find_update(filter, update)
+        result = await myLoggerUpdate.find_update(filter, 
+                                                  update, 
+                                                  admin_login, 
+                                                  '/user/change/')
 
         if (result is None):
             # Exception
             return JSONResponse(content={"message": "Document not found"}, status_code=404)
-
+        
         # Success
         return JSONResponse(content={"message": "Successfully", "data": 0})
     except Exception as e:
@@ -209,8 +215,6 @@ async def post_update__document(request: Request, response: Response, document_i
         database = request.app.state.mongodb[company_key]
         data_collection = database.get_collection("data")
 
-        myLoggerUpdate = CustomUpdate(data_collection)
-
         filter = {'_id': ObjectId(document_id)}
 
         # Convert str to datetime if exists reservation name date
@@ -221,10 +225,13 @@ async def post_update__document(request: Request, response: Response, document_i
                 payload[key] = datetime.strptime(
                     payload[key], "%Y-%m-%d %H:%M:%S.%f")
 
-        payload = {k: v for k, v in payload.items() if v is not None and k in [
-            '_id', 'created_at', 'updated_at']}
+        payload = {k: v for k, v in payload.items() if v is not None and k in ['_id', 
+                                                                               'created_at', 
+                                                                               'updated_at']}
 
         update = {'$set': payload}
+
+        myLoggerUpdate = CustomUpdate(data_collection)
 
         # result = await data_collection.find_one_and_update(filter, update)
         result = await myLoggerUpdate.find_update(filter, update)

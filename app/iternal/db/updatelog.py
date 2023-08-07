@@ -1,3 +1,6 @@
+import asyncio
+from datetime import datetime
+
 
 class CustomUpdate:
     def __init__(self, collection):
@@ -6,11 +9,53 @@ class CustomUpdate:
     def __del__(self):
         pass
 
-    async def update(self, filter, update):
-        print("update_one")
-        return self.__collection.update_one(filter, update, {'upsert': False})
+    async def __log_coroutine(self, filter, old_data, login, additional, now):
+        try:
+            new_data = await self.__collection.find_one(filter)
+            log_collection = list()
 
-    async def find_update(self, filter, update):
-        print("find_one_and_update")
+            old_data = dict(old_data)
+            new_data = dict(new_data)
+
+            if old_data.get('log_collection') is not None:
+                log_collection = list(old_data.get('log_collection'))
+                del old_data['log_collection']
+                del new_data['log_collection']
+
+            update_log = {
+                'old_data': old_data,
+                'new_data': new_data,
+                'created_at': now,
+                'login': login,
+                'additional': additional
+            }
+
+            if len(log_collection) > 4:
+                log_collection.pop(0)
+
+            log_collection.append(update_log)
+
+            update = {'$set': {'log_collection': log_collection}}
+
+            await self.__collection.update_one(filter, update)
+        except:
+            pass
+
+    async def __find_update_task(self, filter, update, login, additional):
+        now = datetime.utcnow()
+        update['$set']['update_at'] = now
         old_data = await self.__collection.find_one_and_update(filter, update, {'upsert': False})
+        if old_data is not None:
+            asyncio.create_task(self.__log_coroutine(filter,
+                                                     old_data,
+                                                     login,
+                                                     additional,
+                                                     now))
         return old_data
+
+    async def find_update(self, filter, update, login='', additional=''):
+        task = asyncio.create_task(self.__find_update_task(filter,
+                                                           update,
+                                                           login,
+                                                           additional))
+        return await task

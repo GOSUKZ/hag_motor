@@ -101,4 +101,4 @@ class RSessions:
 
     def verify_key(self, value: str, hashed_key: bytes) -> bool:
         # Verify the "value" by checking if it matches the hashed_key
-        return bcrypt.checkpw(value.encode('utf-8'), hashed_key) or value == hashed_key
+        return value == hashed_key or bcrypt.checkpw(value.encode('utf-8'), hashed_key)
