@@ -91,13 +91,3 @@ async def post_login(request: Request, response: Response, company_key: str):
 def post_logout(request: Request, response: Response) -> dict:
     request.app.state.r_session.end_session(request, response)
     return {'message': 'Logout successful', 'data': 0}
-
-
-@router.get('/protected')
-def get_protected(request: Request, response: Response) -> dict:
-    session = request.app.state.r_session.protected_session(request, response)
-    print('session: ', session)
-    if len(session) > 0:
-        return {'message': 'Access granted'}
-    else:
-        return {'message': 'Access denied'}

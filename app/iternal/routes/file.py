@@ -283,7 +283,7 @@ async def export_excel(request: Request, response: Response):
 
 
 @router.get("/conflict/{id}")
-async def conflict(request: Request, response: Response, id: str):
+async def get_all_conflict_id(request: Request, response: Response, id: str):
     session = request.app.state.r_session.protected_session(
         request, response, 1)
 
@@ -338,7 +338,7 @@ async def conflict(request: Request, response: Response, id: str):
 
 
 @router.get("/conflict/{id}/{object_id}")
-async def conflict(request: Request, response: Response, id: str, object_id: str):
+async def get_conflict_by_id(request: Request, response: Response, id: str, object_id: str):
     session = request.app.state.r_session.protected_session(
         request, response, 1)
 
@@ -385,7 +385,7 @@ async def conflict(request: Request, response: Response, id: str, object_id: str
 
 
 @router.get("/conflict/{id}/{object_id}/{action}")
-async def conflict(request: Request, response: Response, id: str, object_id: str, action: str):
+async def resolved_conflict(request: Request, response: Response, id: str, object_id: str, action: str):
     session = request.app.state.r_session.protected_session(
         request, response, 1)
 

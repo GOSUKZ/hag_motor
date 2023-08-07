@@ -11,3 +11,11 @@ router = APIRouter(
 )
 
 
+@router.get('/protected')
+def get_protected(request: Request, response: Response) -> dict:
+    session = request.app.state.r_session.protected_session(request, response, 0)
+    print('session: ', session)
+    if len(session) > 0:
+        return {'message': 'Access granted'}
+    else:
+        return {'message': 'Access denied'}
