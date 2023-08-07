@@ -17,7 +17,7 @@ class RegUser(BaseModel):
         }
 
 
-class ChengeUser(BaseModel):
+class ChangeUser(BaseModel):
     login: str
 
     password: Optional[str]

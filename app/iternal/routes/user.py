@@ -3,7 +3,8 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.encoders import jsonable_encoder
 from bson.objectid import ObjectId
 from datetime import datetime
-from app.iternal.models.user import RegUser, ChengeUser
+from app.iternal.models.user import RegUser, ChangeUser
+from app.iternal.models.company import Company
 from app.iternal.db.updatelog import CustomUpdate
 
 from app.iternal.serializers.document import get_serialize_document, is_convertable
@@ -16,8 +17,70 @@ router = APIRouter(
 )
 
 
-@router.post('/chenge_manager/')
-async def chenge_manager(request: Request, response: Response, payload: ChengeUser = Body(...)):
+@router.post('/new_company/')
+async def post_create_company(request: Request, response: Response, payload: Company = Body(...)):
+    try:
+        payload = jsonable_encoder(payload)
+
+        session = request.app.state.r_session.protected_session(
+            request, response, -1, 0)
+
+        if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        login = session.get('login')
+
+        # Connect to DB connection
+        database = request.app.state.database
+        control_colection = database.get_collection("control_data")
+        users_colection = database.get_collection("users")
+
+        company_key: str = payload.get('company_key')
+
+        company_key.replace(' ', '_')
+
+        special_characters = "!@#$%^&*()[]{}|;:,.<>?/~`"
+        for char in special_characters:
+            if company_key.find(char) != -1:
+                # Exception
+                return JSONResponse(content={"message": f'Company name should not contain {special_characters}', "data": 0}, status_code=402)
+
+        upload_at = payload.get('upload_at')
+
+        filter = {'company_key': company_key}
+
+        result = await control_colection.find_one(filter)
+
+        if (result is not None):
+            # Exception
+            return JSONResponse(content={"message": 'Company already exists', "data": 0}, status_code=403)
+
+        filter = {"login": login}
+        result = await users_colection.find_one(filter, {'company_key': 1})
+
+        company_keys = result.get('company_key')
+        company_keys.append(company_key)
+        update = {'$set': {'company_key': company_keys}}
+
+        await users_colection.update_one(filter, update)
+
+        insert = {
+            "company_key": company_key,
+            "upload_at": upload_at
+        }
+
+        await control_colection.insert_one(insert)
+
+        # Success
+        return JSONResponse(content={"message": "Create company successfully", "data": company_key}, status_code=201)
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+@router.post('/change/')
+async def post_manager(request: Request, response: Response, payload: ChangeUser = Body(...)):
     try:
         session = request.app.state.r_session.protected_session(
             request, response, 99)
@@ -70,10 +133,10 @@ async def chenge_manager(request: Request, response: Response, payload: ChengeUs
         return JSONResponse(content={"message": "Successfully", "data": 0})
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": "Chenge data error", "error": str(e)}, status_code=500)
+        return JSONResponse(content={"message": "change data error", "error": str(e)}, status_code=500)
 
 
-@router.post('/add_manager/{manager_type}')
+@router.post('/reg/')
 async def post_manager(request: Request, response: Response, manager_type: str, payload: RegUser = Body(...)):
     try:
         session = request.app.state.r_session.protected_session(
@@ -87,6 +150,8 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
             # Exception
             return JSONResponse(content={"message": "Unauthorized or invalid session"}, status_code=401)
 
+        admin_role = int(session.get('role'))
+
         # Connect to DB connection
         database = request.app.state.database
         users_collection = database.get_collection("users")
@@ -99,6 +164,9 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
 
         login = payload.get('login')
         role = payload.get('role')
+
+        if role > admin_role:
+            role = admin_role
 
         filter = {"login": login}
         result = await users_collection.find_one(filter)
@@ -124,7 +192,7 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
 
 
 @router.post('/{document_id}/')
-async def post_update(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
+async def post_update__document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
     try:
         payload = jsonable_encoder(payload)
 
