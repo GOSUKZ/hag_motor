@@ -49,7 +49,8 @@ async def chenge_manager(request: Request, response: Response, payload: ChengeUs
                 payload["password"])
 
         if payload.get("company_key") is not None:
-            payload["company_key"] = [v for v in payload["company_key"] if v in company_keys]
+            payload["company_key"] = [
+                v for v in payload["company_key"] if v in company_keys]
             if len(payload["company_key"]) == 0:
                 del payload["company_key"]
 
@@ -65,13 +66,11 @@ async def chenge_manager(request: Request, response: Response, payload: ChengeUs
             # Exception
             return JSONResponse(content={"message": "Document not found"}, status_code=404)
 
-        result = get_serialize_document(result)
-
         # Success
-        return JSONResponse(content={"message": "Successfully", "data": [result]})
+        return JSONResponse(content={"message": "Successfully", "data": 0})
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+        return JSONResponse(content={"message": "Chenge data error", "error": str(e)}, status_code=500)
 
 
 @router.post('/add_manager/{manager_type}')
@@ -121,7 +120,7 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
         return JSONResponse(content={"message": "Registration successfully", "data": 0}, status_code=201)
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+        return JSONResponse(content={"message": "Registration error", "error": str(e)}, status_code=500)
 
 
 @router.post('/{document_id}/')
