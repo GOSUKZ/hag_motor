@@ -1,23 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
 
-
-class User(BaseModel):
-    name: str
-    description: str = None
-    price: float
-    tax: float = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                'name': "John Doe",
-                'description': "123 John Doe",
-                'price': 123,
-                'tax': 321,
-            }
-        }
-
 class RegUser(BaseModel):
     login: str
     password: str
@@ -33,5 +16,18 @@ class RegUser(BaseModel):
             }
         }
 
-class UpdateUser(User):
-    id: str
+
+class ChengeUser(BaseModel):
+    login: str
+
+    password: Optional[str]
+    role: Optional[int]
+    company_key: Optional[list]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                'login': "admin",
+                'password': "admin"
+            }
+        }
