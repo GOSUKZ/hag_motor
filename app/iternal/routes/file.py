@@ -17,9 +17,11 @@ router = APIRouter(
 
 # TODO: Выгрузка ограничить
 
+
 @router.post("/upload/")
 async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
-    session = request.app.state.r_session.protected_session(request, response, 1)
+    session = request.app.state.r_session.protected_session(
+        request, response, 1)
 
     if len(session) <= 0:
         # Exception
@@ -101,7 +103,8 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
 
 @router.post("/confirm/{id}")
 async def confirm_file(request: Request, response: Response, id: str):
-    session = request.app.state.r_session.protected_session(request, response, 1)
+    session = request.app.state.r_session.protected_session(
+        request, response, 1)
 
     if len(session) <= 0:
         # Exception
@@ -199,7 +202,8 @@ async def confirm_file(request: Request, response: Response, id: str):
 
 @router.get("/export_excel/")
 async def export_excel(request: Request, response: Response):
-    session = request.app.state.r_session.protected_session(request, response, 1)
+    session = request.app.state.r_session.protected_session(
+        request, response, 1)
 
     if len(session) <= 0:
         # Exception
@@ -224,10 +228,26 @@ async def export_excel(request: Request, response: Response):
 
         result = await data_colection.find({}).to_list(None)
 
+        # total = {'coount': 0, 'weight': 0, 'space': 0, 'density': 0, 'packaging': 0,
+        #          'delivery': 0, 'other': 0, 'insurance': 0, 'unit_price': 0, 'total': 0}
+
+        total = {}
+
         for i in range(0, len(result)):
             del result[i]["created_at"]
             del result[i]["updated_at"]
             result[i]["_"] = ""
+
+            buf_result = get_serialize_document(result[i])
+
+            for key in buf_result.keys():
+                if ((buf_result[key] is not None) and (type(buf_result[key]) != str)):
+                    if total.get(key):
+                        total[key] = sum([total[key], buf_result[key]])
+                    else:
+                        total[key] = buf_result[key]
+
+        result.append(total)
 
         # Create a DataFrame from the data
         df = pd.DataFrame(result)
@@ -264,7 +284,8 @@ async def export_excel(request: Request, response: Response):
 
 @router.get("/conflict/{id}")
 async def conflict(request: Request, response: Response, id: str):
-    session = request.app.state.r_session.protected_session(request, response, 1)
+    session = request.app.state.r_session.protected_session(
+        request, response, 1)
 
     if len(session) <= 0:
         # Exception
@@ -318,7 +339,8 @@ async def conflict(request: Request, response: Response, id: str):
 
 @router.get("/conflict/{id}/{object_id}")
 async def conflict(request: Request, response: Response, id: str, object_id: str):
-    session = request.app.state.r_session.protected_session(request, response, 1)
+    session = request.app.state.r_session.protected_session(
+        request, response, 1)
 
     if len(session) <= 0:
         # Exception
@@ -364,7 +386,8 @@ async def conflict(request: Request, response: Response, id: str, object_id: str
 
 @router.get("/conflict/{id}/{object_id}/{action}")
 async def conflict(request: Request, response: Response, id: str, object_id: str, action: str):
-    session = request.app.state.r_session.protected_session(request, response, 1)
+    session = request.app.state.r_session.protected_session(
+        request, response, 1)
 
     if len(session) <= 0:
         # Exception
@@ -438,7 +461,8 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
     task = upload_colection.insert_one(data_for_db)
 
     # limit the reading area
-    list_data = list_data[4:]
+    # * -1 because we don't read the total and 4 because we don't read header
+    list_data = list_data[4:-1]
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:20]
 
@@ -495,7 +519,7 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
 
     # limit the reading area
     # * -1 because we don't read the total and 4 because we don't read header
-    list_data = list_data[4:-1]
+    list_data = list_data[3:-1]
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:19]
 
@@ -503,7 +527,7 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
                   'place_delivery', 'packaging', 'delivery', 'other', 'insurance', 'unit_price', 'total', 'arrival_date', 'received_positions']
 
     data_list = []
-    for i in range(len(list_data[1:])):
+    for i in range(1, len(list_data)):
         line_for_db = {}
         for j in range(len(title_list)):
             title = str(title_list[j])
