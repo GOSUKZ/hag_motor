@@ -288,8 +288,8 @@ async def export_excel(request: Request, response: Response):
         return JSONResponse(content={"message": str(e)}, status_code=500)
 
 
-@router.get("/conflict/{id}")
-async def get_all_conflict_id(request: Request, response: Response, id: str):
+@router.get("/conflict/{conflict_id}")
+async def get_all_conflict_id(request: Request, response: Response, conflict_id: str):
     session = request.app.state.r_session.protected_session(
         request, response, 1)
 
@@ -299,45 +299,56 @@ async def get_all_conflict_id(request: Request, response: Response, id: str):
 
     company_key = session.get("company_key")
 
+    now = datetime.utcnow()
+
     try:
         database = request.app.state.mongodb[company_key]
         upload_colection = database.get_collection("upload")
-        # data_colection = database.get_collection("data")
 
-        filter = {'action_id': ObjectId(id), "status": "conflict"}
-        result = await upload_colection.find_one(filter)
+        filter = {'action_id': ObjectId(conflict_id), "status": "conflict"}
+        result = await upload_colection.find_one(filter, {'data': 1})
 
         if (result is None):
             # Exception
             return JSONResponse(content={"message": "File not found"}, status_code=404)
 
-        new_data = result.get("data")
-        # for data in new_data:
-        #     del data["updated_at"]
-        #     for key in data.keys():
-        #         data[key] = str(data.get(key))
+        data_db = result.get("data")
 
-        data_id = []
-        for data in new_data:
+        data_insert = []
+        data_update = []
+        conflict_ids = []
+        action_id = 0
+        for data in data_db:
             id = data.get("_id")
             if (id is not None):
-                data_id.append(str(id))
+                data_update.append(data)
+            else:
+                data_insert.append(data)
 
-        # curren_data = []
+        if len(data_insert) > 0:
+            if len(data_update) > 0:
+                update = {'$set': {'data': data_update}}
+                task = upload_colection.update_one(filter, update)
+            else:
+                task = upload_colection.delete_one(filter)
 
-        # for data in new_data:
-        #     filter = {'_id': ObjectId(data.get("_id"))}
-        #     result = await data_colection.find_one(filter)
-        #     if result is not None:
-        #         del result["updated_at"]
-        #         del result["created_at"]
+            action_id = ObjectId()
+            insert = {
+                'action_id': action_id,
+                'data': data_insert,
+                'created_at': now,
+                'status': 'ok'
+            }
+            action_id = str(action_id)
+            await upload_colection.insert_one(insert)
+            await task
 
-        #         for key in result.keys():
-        #             result[key] = str(result.get(key))
-        #         curren_data.append(result)
+        for data in data_update:
+            id = data.get("_id")
+            conflict_ids.append(str(id))
 
         # Success
-        return JSONResponse(content={"message": "File conflict objects", "data": {"new_data": data_id, "new_data_length": len(new_data)}})
+        return JSONResponse(content={"message": "File conflict objects", "data": {"new_action_id": action_id, "old_action_id": conflict_id, "conflict_id": conflict_ids}})
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": str(e)}, status_code=500)

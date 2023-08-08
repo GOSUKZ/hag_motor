@@ -48,8 +48,6 @@ async def post_update__document(request: Request, response: Response, document_i
                 update = {'$set': payload}
 
                 myLoggerUpdate = CustomUpdate(data_collection)
-
-                # # result = await data_collection.find_one_and_update(filter, update)
                 result = await myLoggerUpdate.find_update(filter,
                                                           update,
                                                           login,
