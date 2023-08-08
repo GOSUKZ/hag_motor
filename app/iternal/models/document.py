@@ -52,3 +52,28 @@ class UpdateDocument(BaseModel):
     total: Optional[float]
     arrival_date: Optional[str]
     received_positions: Optional[str]
+
+
+class UpdateDocumentManagerO(BaseModel):
+    date: Optional[str]
+    place_sending: Optional[str]
+    type: Optional[str]
+    phone: Optional[str]
+    code: Optional[str]
+    description: Optional[str]
+    coount: Optional[int]
+    weight: Optional[float]
+    space: Optional[float]
+    density: Optional[float]
+    place_deivery: Optional[str]
+    packaging: Optional[float]
+    delivery: Optional[float]
+    other: Optional[float]
+    insurance: Optional[int]
+    unit_price: Optional[float]
+    total: Optional[float]
+
+
+class UpdateDocumentManagerI(BaseModel):
+    arrival_date: Optional[str]
+    received_positions: Optional[str]

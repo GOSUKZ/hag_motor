@@ -5,6 +5,7 @@ from datetime import datetime
 from io import BytesIO
 from app.iternal.serializers.document import get_serialize_document
 from pymongo import ASCENDING
+from app.iternal.db.updatelog import CustomUpdate
 
 import pandas as pd
 
@@ -111,6 +112,7 @@ async def confirm_file(request: Request, response: Response, id: str):
         return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
     company_key = session.get("company_key")
+    login = session.get("login")
 
     try:
         database = request.app.state.mongodb[company_key]
@@ -175,7 +177,9 @@ async def confirm_file(request: Request, response: Response, id: str):
 
                     tasks.append(asyncio.create_task(confirm_file_coroutine(line,
                                                                             data_colection,
-                                                                            insert_data)))
+                                                                            insert_data,
+                                                                            login,
+                                                                            f'/files/confirm/{id}')))
                 # Await all tasks
                 await asyncio.gather(*tasks)
 
@@ -236,6 +240,8 @@ async def export_excel(request: Request, response: Response):
         for i in range(0, len(result)):
             del result[i]["created_at"]
             del result[i]["updated_at"]
+            if result[i].get("log_collection") is not None:
+                del result[i]["log_collection"]
             result[i]["_"] = ""
 
             buf_result = get_serialize_document(result[i])
@@ -582,7 +588,7 @@ async def upload_generated_file_coroutine(data_colection, line, now, data_buf_li
         data_buf_list.append(buf_data)
 
 
-async def confirm_file_coroutine(line, data_colection, insert_data):
+async def confirm_file_coroutine(line, data_colection, insert_data, login, additional):
     data = dict(line)
 
     # Check if line contains _id field
@@ -593,6 +599,11 @@ async def confirm_file_coroutine(line, data_colection, insert_data):
 
         update = {"$set": data}
         result = await data_colection.find_one_and_update(filter, update)
+        myLoggerUpdate = CustomUpdate(data_colection)
+        result = await myLoggerUpdate.find_update(filter,
+                                                  update,
+                                                  login,
+                                                  additional)
 
         # Check if product exists
         if (result is None):

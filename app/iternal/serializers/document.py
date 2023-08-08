@@ -103,4 +103,7 @@ def get_serialize_document(data: dict) -> dict:
         if not is_jsonable(value):
             buf_data[key] = str(value)
 
+    if buf_data.get('log_collection') is not None:
+        del buf_data['log_collection']
+
     return buf_data

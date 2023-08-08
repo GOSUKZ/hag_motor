@@ -43,7 +43,7 @@ class CustomUpdate:
 
     async def __find_update_task(self, filter, update, login, additional):
         now = datetime.utcnow()
-        update['$set']['update_at'] = now
+        update['$set']['updated_at'] = now
         old_data = await self.__collection.find_one_and_update(filter, update, {'upsert': False})
         if old_data is not None:
             asyncio.create_task(self.__log_coroutine(filter,

@@ -103,7 +103,7 @@ async def post_manager(request: Request, response: Response, payload: ChangeUser
         if (result is None):
             # Exception
             return JSONResponse(content={"message": 'Invalid login', "data": 0}, status_code=403)
-        
+
         company_keys = result['company_key']
 
         payload = jsonable_encoder(payload)
@@ -126,15 +126,15 @@ async def post_manager(request: Request, response: Response, payload: ChangeUser
         filter = {'login': login, 'role': {'$lte': admin_role}}
 
         myLoggerUpdate = CustomUpdate(users_collection)
-        result = await myLoggerUpdate.find_update(filter, 
-                                                  update, 
-                                                  admin_login, 
+        result = await myLoggerUpdate.find_update(filter,
+                                                  update,
+                                                  admin_login,
                                                   '/user/change/')
 
         if (result is None):
             # Exception
             return JSONResponse(content={"message": "Document not found"}, status_code=404)
-        
+
         # Success
         return JSONResponse(content={"message": "Successfully", "data": 0})
     except Exception as e:
@@ -210,6 +210,7 @@ async def post_update__document(request: Request, response: Response, document_i
             return JSONResponse(content={"message": "Unauthorized or invalid session"}, status_code=401)
 
         company_key = session.get("company_key")
+        login = session.get("login")
 
         # Connect to DB connection
         database = request.app.state.mongodb[company_key]
@@ -225,16 +226,17 @@ async def post_update__document(request: Request, response: Response, document_i
                 payload[key] = datetime.strptime(
                     payload[key], "%Y-%m-%d %H:%M:%S.%f")
 
-        payload = {k: v for k, v in payload.items() if v is not None and k in ['_id', 
-                                                                               'created_at', 
-                                                                               'updated_at']}
+        payload = {k: v for k, v in payload.items() if v is not None and k not in ['_id',
+                                                                                   'created_at',
+                                                                                   'updated_at']}
 
         update = {'$set': payload}
 
         myLoggerUpdate = CustomUpdate(data_collection)
-
-        # result = await data_collection.find_one_and_update(filter, update)
-        result = await myLoggerUpdate.find_update(filter, update)
+        result = await myLoggerUpdate.find_update(filter,
+                                                  update,
+                                                  login,
+                                                  f'user/{document_id}')
 
         if (result is None):
             # Exception
