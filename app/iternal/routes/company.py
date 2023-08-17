@@ -169,3 +169,107 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+@router.get('/log/{document_id}/')
+async def get_doc_history(request: Request, response: Response, document_id: str) -> dict:
+    try:
+        session = request.app.state.r_session.protected_session(
+            request, response, 0)
+
+        if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.mongodb[company_key]
+        data_colection = database.get_collection("data")
+
+        filter = {'_id': ObjectId(document_id)}
+
+        result = await data_colection.find_one(filter)
+
+        log_collection = result.get("log_collection")
+        if log_collection is None:
+            # Exception
+            return JSONResponse(content={"message": "Log_collection is null"}, status_code=400)
+        
+
+        for log in log_collection:
+            old_data = get_serialize_document(log['old_data'])
+            new_data = get_serialize_document(log['new_data'])
+
+            log['new_data'] = new_data
+            log['old_data'] = old_data
+
+            log['created_at'] = str(log['created_at'])
+            log['log_id'] = str(log['log_id'])
+
+            log = jsonable_encoder(log)
+
+        log_count = len(log_collection)
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": {'log_collection': log_collection, 'log_count': log_count}})
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+    
+
+@router.get('/log/{document_id}/{log_id}')
+async def get_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
+    try:
+        session = request.app.state.r_session.protected_session(
+            request, response, 0)
+
+        if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.mongodb[company_key]
+        data_colection = database.get_collection("data")
+
+        filter = {'_id': ObjectId(document_id)}
+
+        result = await data_colection.find_one(filter)
+
+        log_collection : list = result.get("log_collection")
+        if log_collection is None:
+            # Exception
+            return JSONResponse(content={"message": "Log_collection is null"}, status_code=400)
+        
+
+        document = dict()     
+
+        for log in log_collection:
+            if (log['log_id'] == ObjectId(log_id)):
+                old_data = get_serialize_document(log['old_data'])
+                new_data = get_serialize_document(log['new_data'])
+
+                log['new_data'] = new_data
+                log['old_data'] = old_data
+
+                log['created_at'] = str(log['created_at'])
+                log['log_id'] = str(log['log_id'])
+
+                document = jsonable_encoder(log)
+
+                break
+
+        
+
+
+
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": {'log_collection': document}})
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+    
+

@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from bson.objectid import ObjectId
 
 
 class CustomUpdate:
@@ -23,6 +24,7 @@ class CustomUpdate:
                 del new_data['log_collection']
 
             update_log = {
+                'log_id': ObjectId(),
                 'old_data': old_data,
                 'new_data': new_data,
                 'created_at': now,
@@ -44,6 +46,11 @@ class CustomUpdate:
     async def __find_update_task(self, filter, update, login, additional):
         now = datetime.utcnow()
         update['$set']['updated_at'] = now
+
+        if update['$set'].get('_id') is not None:
+            print('update: ', update)
+            print('filter: ', filter)
+            del update['$set']['_id']
         old_data = await self.__collection.find_one_and_update(filter, update, {'upsert': False})
         if old_data is not None:
             asyncio.create_task(self.__log_coroutine(filter,

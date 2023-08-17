@@ -1,11 +1,13 @@
 from fastapi import APIRouter, File, UploadFile, Request
 from fastapi.responses import JSONResponse, Response
+from fastapi.encoders import jsonable_encoder
 from bson.objectid import ObjectId
 from datetime import datetime
 from io import BytesIO
-from app.iternal.serializers.document import get_serialize_document
+from app.iternal.serializers.document import get_serialize_document, is_convertable
 from pymongo import ASCENDING
 from app.iternal.db.updatelog import CustomUpdate
+from app.iternal.models.document import UpdateDocument, UpdateDocumentManagerO, UpdateDocumentManagerI
 
 import pandas as pd
 
@@ -29,6 +31,7 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
         return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
     company_key = session.get("company_key")
+    role = int(session.get("role"))
 
     # Get now data
     now = datetime.utcnow()
@@ -88,12 +91,14 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
                                                       now,
                                                       action_extended_id,
                                                       control_data,
-                                                      list_data))
+                                                      list_data,
+                                                      role))
         else:
             asyncio.create_task(upload_external_file(upload_colection,
                                                      now,
                                                      action_extended_id,
-                                                     list_data))
+                                                     list_data,
+                                                     role))
 
         # Success
         return JSONResponse(content={"message": "File pre-upload successfully", "data": str(action_extended_id)}, status_code=202)
@@ -469,7 +474,7 @@ async def resolved_conflict(request: Request, response: Response, id: str, objec
 
 
 # Functions for async upload files on background
-async def upload_generated_file(data_colection, upload_colection, now, action_extended_id, control_data, list_data):
+async def upload_generated_file(data_colection, upload_colection, now, action_extended_id, control_data, list_data, role):
     data_for_db = dict()
     data_for_db["action_id"] = action_extended_id
     data_for_db["created_at"] = now
@@ -500,6 +505,10 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
     tasks = []
 
     for line in data_list:
+        print('line: ', get_serialize_document(line))
+        buf = jsonable_encoder(UpdateDocumentManagerO.validate(
+            get_serialize_document(line)))
+        print('buf: ', buf)
         tasks.append(asyncio.create_task(upload_generated_file_coroutine(data_colection,
                                                                          line,
                                                                          now,
@@ -585,18 +594,14 @@ async def upload_generated_file_coroutine(data_colection, line, now, data_buf_li
             if sum_chenges > 0:
                 buf_data["updated_at"] = now
                 data_buf_list.append(buf_data)
-        else:
-            # If product not in connection
-            del buf_data["_id"]
-            buf_data["created_at"] = now
-            buf_data["updated_at"] = now
-            data_buf_list.append(buf_data)
-    else:
-        # If add new product
-        del buf_data["_id"]
-        buf_data["created_at"] = now
-        buf_data["updated_at"] = now
-        data_buf_list.append(buf_data)
+
+            return
+        return
+    # If product not in collection add new product
+    del buf_data["_id"]
+    buf_data["created_at"] = now
+    buf_data["updated_at"] = now
+    data_buf_list.append(buf_data)
 
 
 async def confirm_file_coroutine(line, data_colection, insert_data, login, additional):
