@@ -4,10 +4,11 @@ from fastapi.encoders import jsonable_encoder
 from bson.objectid import ObjectId
 from datetime import datetime
 from io import BytesIO
-from app.iternal.serializers.document import get_serialize_document, is_convertable
+from app.iternal.serializers.document import get_serialize_document
 from pymongo import ASCENDING
 from app.iternal.db.updatelog import CustomUpdate
 from app.iternal.models.document import UpdateDocument, UpdateDocumentManagerO, UpdateDocumentManagerI
+from app.iternal.log.event_log import log_event
 
 import pandas as pd
 
@@ -21,12 +22,18 @@ router = APIRouter(
 # TODO: Выгрузка ограничить
 
 
+# Выгрузка файла
 @router.post("/upload/")
 async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
     session = request.app.state.r_session.protected_session(
         request, response, 1)
 
     if len(session) <= 0:
+        log_event(request,
+                  response,
+                  '/files/upload/',
+                  {},
+                  'Unauthorized or invalid sesion')  # Log
         # Exception
         return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -100,19 +107,35 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
                                                      list_data,
                                                      role))
 
+        log_event(request,
+                  response,
+                  '/files/upload/',
+                  {'action_extended_id': str(action_extended_id)},
+                  'File pre-upload successfully')  # Log
         # Success
         return JSONResponse(content={"message": "File pre-upload successfully", "data": str(action_extended_id)}, status_code=202)
     except Exception as e:
+        log_event(request,
+                  response,
+                  '/files/upload/',
+                  {"error": str(e)},
+                  'Upload file error')  # Log
         # Exception
-        return JSONResponse(content={"message": str(e)}, status_code=422)
+        return JSONResponse(content={"message": "Upload file error", "error": str(e)}, status_code=422)
 
 
+# Подтверждение выгрузки
 @router.post("/confirm/{id}")
 async def confirm_file(request: Request, response: Response, id: str):
     session = request.app.state.r_session.protected_session(
         request, response, 1)
 
     if len(session) <= 0:
+        log_event(request,
+                  response,
+                  f'/files/confirm/{id}',
+                  {'action_id': str(id)},
+                  'Unauthorized or invalid sesion')  # Log
         # Exception
         return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -133,6 +156,12 @@ async def confirm_file(request: Request, response: Response, id: str):
         if (result is not None):
 
             if (result.get('status') != 'ok'):
+                log_event(request,
+                          response,
+                          f'/files/confirm/{id}',
+                          {"action_id": str(id),
+                           "status": result.get('status')},
+                          'File status not ok')  # Log
                 # Success
                 return JSONResponse(content={"message": "File status not ok", "data": {"action_id": str(id), "status": result.get('status')}}, status_code=400)
 
@@ -171,6 +200,12 @@ async def confirm_file(request: Request, response: Response, id: str):
                     update = {'$set': {"status": "conflict"}}
                     await upload_colection.update_one(filter, update)
 
+                    log_event(request,
+                              response,
+                              f'/files/confirm/{id}',
+                              {"action_id": str(id)},
+                              'File confirm conflict')  # Log
+
                     # Success
                     return JSONResponse(content={"message": "File confirm conflict", "data": str(id)}, status_code=409)
 
@@ -202,13 +237,25 @@ async def confirm_file(request: Request, response: Response, id: str):
         filter = {'action_id': ObjectId(id), "status": "ok"}
         result = await upload_colection.delete_one(filter)
 
+        log_event(request,
+                  response,
+                  f'/files/confirm/{id}',
+                  {"action_id": str(id)},
+                  'File confirm successfully')  # Log
+
         # Success
         return JSONResponse(content={"message": "File confirm successfully"}, status_code=202)
     except Exception as e:
+        log_event(request,
+                  response,
+                  f'/files/confirm/{id}',
+                  {"action_id": str(id)},
+                  'Get documents error')  # Log
         # Exception
-        return JSONResponse(content={"message": str(e)}, status_code=500)
+        return JSONResponse(content={"message":"File confirm error", 'error': str(e)}, status_code=500)
 
 
+# Скачивание файла
 @router.get("/export_excel/")
 async def export_excel(request: Request, response: Response):
     session = request.app.state.r_session.protected_session(
@@ -293,6 +340,7 @@ async def export_excel(request: Request, response: Response):
         return JSONResponse(content={"message": str(e)}, status_code=500)
 
 
+# Работа с конфликтами ------------------------
 @router.get("/conflict/{conflict_id}")
 async def get_all_conflict_id(request: Request, response: Response, conflict_id: str):
     session = request.app.state.r_session.protected_session(
@@ -471,6 +519,7 @@ async def resolved_conflict(request: Request, response: Response, id: str, objec
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": "Not Faund conflict", "error": str(e)}, status_code=500)
+# ----------------------------------------------
 
 
 # Functions for async upload files on background
@@ -505,14 +554,15 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
     tasks = []
 
     for line in data_list:
-        print('line: ', get_serialize_document(line))
+        # print('line: ', get_serialize_document(line))
         buf = jsonable_encoder(UpdateDocumentManagerO.validate(
             get_serialize_document(line)))
-        print('buf: ', buf)
+        # print('buf: ', buf)
         tasks.append(asyncio.create_task(upload_generated_file_coroutine(data_colection,
                                                                          line,
                                                                          now,
-                                                                         data_buf_list)))
+                                                                         data_buf_list,
+                                                                         role)))
 
     # Await all tasks
     await asyncio.gather(*tasks)
@@ -534,7 +584,7 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
     await upload_colection.update_one({"action_id": action_extended_id}, data_for_db)
 
 
-async def upload_external_file(upload_colection, now, action_extended_id, list_data):
+async def upload_external_file(upload_colection, now, action_extended_id, list_data, role):
     print("start Function")
     data_for_db = dict()
     data_for_db["action_id"] = action_extended_id
@@ -558,6 +608,11 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
         for j in range(len(title_list)):
             title = str(title_list[j])
             line_for_db[title] = list_data[i][j]
+
+        if role == 1:
+            line_for_db = dict(UpdateDocument.validate(get_serialize_document(
+                UpdateDocumentManagerO.validate(get_serialize_document(line_for_db)))))
+
         line_for_db["created_at"] = now
         line_for_db["updated_at"] = now
         data_list.append(line_for_db)
@@ -578,7 +633,7 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
     print("Success Function")
 
 
-async def upload_generated_file_coroutine(data_colection, line, now, data_buf_list):
+async def upload_generated_file_coroutine(data_colection, line, now, data_buf_list, role):
     buf_data = dict(line)
 
     # Check if id field is exist and valid
@@ -589,7 +644,7 @@ async def upload_generated_file_coroutine(data_colection, line, now, data_buf_li
         if (result is not None):
             # Calculate the number of modified fields and check it
             sum_chenges = sum(
-                1 for key, value in buf_data.items() if result.get(key) != value) - 1
+                1 for key, value in buf_data.items() if (result.get(key) != value and result.get(key) != None)) - 1
 
             if sum_chenges > 0:
                 buf_data["updated_at"] = now

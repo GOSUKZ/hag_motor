@@ -44,14 +44,14 @@ class UpdateDocument(BaseModel):
     space: Optional[float]
     density: Optional[float]
     place_delivery: Optional[str]
-    packaging: Optional[float]
-    delivery: Optional[float]
-    other: Optional[float]
-    insurance: Optional[int]
-    unit_price: Optional[float]
-    total: Optional[float]
-    arrival_date: Optional[str]
-    received_positions: Optional[str]
+    packaging: Optional[float | str]
+    delivery: Optional[float | str]
+    other: Optional[float | str]
+    insurance: Optional[int | str]
+    unit_price: Optional[float | str]
+    total: Optional[float | str]
+    arrival_date: Optional[float | str]
+    received_positions: Optional[float | str]
 
 
 class UpdateDocumentManagerO(BaseModel):

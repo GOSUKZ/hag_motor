@@ -17,6 +17,7 @@ router = APIRouter(
 )
 
 
+# Добавление компании
 @router.post('/new_company/')
 async def post_create_company(request: Request, response: Response, payload: Company = Body(...)):
     try:
@@ -79,6 +80,7 @@ async def post_create_company(request: Request, response: Response, payload: Com
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
+# Изменение записи о менеджере
 @router.post('/change/')
 async def post_manager(request: Request, response: Response, payload: ChangeUser = Body(...)):
     try:
@@ -142,7 +144,8 @@ async def post_manager(request: Request, response: Response, payload: ChangeUser
         return JSONResponse(content={"message": "change data error", "error": str(e)}, status_code=500)
 
 
-@router.post('/reg/')
+# Регистрация менеджера
+@router.post('/reg/{manager_type}')
 async def post_manager(request: Request, response: Response, manager_type: str, payload: RegUser = Body(...)):
     try:
         session = request.app.state.r_session.protected_session(
@@ -197,6 +200,7 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
         return JSONResponse(content={"message": "Registration error", "error": str(e)}, status_code=500)
 
 
+# Обнавление данных в записи
 @router.post('/{document_id}/')
 async def post_update__document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
     try:
@@ -251,6 +255,7 @@ async def post_update__document(request: Request, response: Response, document_i
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
+# Возврат по истории
 @router.get('/log/{document_id}/{log_id}')
 async def get_reverting_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
     try:

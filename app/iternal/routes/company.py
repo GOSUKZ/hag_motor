@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.encoders import jsonable_encoder
 from bson.objectid import ObjectId
 from datetime import datetime
-from io import BytesIO
 from app.iternal.serializers.document import get_serialize_document, is_convertable
-from pymongo import ASCENDING
+from app.iternal.log.event_log import log_event
 
 
 from math import ceil
@@ -17,10 +16,16 @@ router = APIRouter(
 )
 
 
+# Получение документов
 @router.get('/')
 async def get_docs(request: Request, response: Response, page: int = 0, length: int = 10) -> dict:
     try:
         if ((page < 0) or (length < 0)):
+            log_event(request,
+                      response,
+                      '/company/',
+                      {'page': page, 'length': length},
+                      'Page or length out of range')  # Log
             # Exception
             return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
 
@@ -34,6 +39,11 @@ async def get_docs(request: Request, response: Response, page: int = 0, length: 
             request, response, 0)
 
         if len(session) <= 0:
+            log_event(request,
+                      response,
+                      '/company/',
+                      {'page': page, 'length': length},
+                      'Unauthorized or invalid sesion')  # Log
             # Exception
             return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -56,21 +66,44 @@ async def get_docs(request: Request, response: Response, page: int = 0, length: 
 
         page_count = ceil(documents_count / length)
 
+        log_event(request,
+                  response,
+                  '/company/',
+                  {'page': page, 'length': length, "documents": documents,
+                   "documents_count": documents_count, "page_count": page_count},
+                  'Successfully')  # Log
+
         # Success
         return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count, "page_count": page_count}})
     except Exception as e:
+        log_event(request,
+                  response,
+                  '/company/',
+                  {'page': page, 'length': length, "error": str(e)},
+                  'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
+# Сортировка и получение документов
 @router.get('/{sort_key}/')
 async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id') -> dict:
     try:
         if ((page < 0) or (length < 0)):
+            log_event(request,
+                      response,
+                      f'/company/{sort_key}/',
+                      {'page': page, 'length': length, 'sorted': sorted},
+                      'Page or length out of range')  # Log
             # Exception
             return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
 
         if ((sorted > 1) or (sorted < -1) or (sorted == 0)):
+            log_event(request,
+                      response,
+                      f'/company/{sort_key}/',
+                      {'page': page, 'length': length, 'sorted': sorted},
+                      'sorted out of range (1 - ASCENDING, -1 - DESCENDING)')  # Log
             # Exception
             return JSONResponse(content={"message": "sorted out of range (1 - ASCENDING, -1 - DESCENDING)"}, status_code=403)
 
@@ -84,6 +117,11 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
             request, response, 0)
 
         if len(session) <= 0:
+            log_event(request,
+                      response,
+                      '/company/',
+                      {'page': page, 'length': length, 'sorted': sorted},
+                      'Unauthorized or invalid sesion')  # Log
             # Exception
             return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -106,21 +144,45 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
 
         page_count = ceil(documents_count / length)
 
+        log_event(request,
+                  response,
+                  f'/company/{sort_key}/',
+                  {'page': page, 'length': length, 'sorted': sorted, "documents": documents,
+                   "documents_count": documents_count, "page_count": page_count},
+                  'Successfully')  # Log
+
         # Success
         return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count, "page_count": page_count}})
     except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/{sort_key}/',
+                  {'page': page, 'length': length,
+                   'sorted': sorted, "error": str(e)},
+                  'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
-@router.get('/{sort_key}/{filde_key}/{fild_value}/')
+# Сортировка, группировка и получение документов
+@router.get('/{sort_key}/{fild_key}/{fild_value}/')
 async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id', fild_key: str = 'weight', fild_value: str = '10.5') -> dict:
     try:
         if ((page < 0) or (length < 0)):
+            log_event(request,
+                      response,
+                      f'/company/{sort_key}/{fild_key}/{fild_value}/',
+                      {'page': page, 'length': length, 'sorted': sorted},
+                      'Page or length out of range')  # Log
             # Exception
             return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
 
         if ((sorted > 1) or (sorted < -1) or (sorted == 0)):
+            log_event(request,
+                      response,
+                      f'/company/{sort_key}/{fild_key}/{fild_value}/',
+                      {'page': page, 'length': length, 'sorted': sorted},
+                      'sorted out of range (1 - ASCENDING, -1 - DESCENDING)')  # Log
             # Exception
             return JSONResponse(content={"message": "sorted out of range (1 - ASCENDING, -1 - DESCENDING)"}, status_code=403)
 
@@ -134,6 +196,11 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
             request, response, 0)
 
         if len(session) <= 0:
+            log_event(request,
+                      response,
+                      f'/company/{sort_key}/{fild_key}/{fild_value}/',
+                      {'page': page, 'length': length, 'sorted': sorted},
+                      'Unauthorized or invalid sesion')  # Log
             # Exception
             return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -154,6 +221,7 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
             fild_value = is_convertable(fild_value)
 
         task = data_colection.count_documents({fild_key: fild_value})
+        print('fild_key: fild_value: ', {fild_key: fild_value})
 
         cursor = data_colection.find({fild_key: fild_value}).sort(sort_key,
                                                                   sorted).skip(skip).limit(limit)
@@ -164,13 +232,27 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
 
         page_count = ceil(documents_count / length)
 
+        log_event(request,
+                  response,
+                  f'/company/{sort_key}/{fild_key}/{fild_value}/',
+                  {'page': page, 'length': length, 'sorted': sorted, "documents": documents,
+                   "documents_count": documents_count, "page_count": page_count},
+                  'Successfully')  # Log
+
         # Success
         return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count, "page_count": page_count}})
     except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/{sort_key}/{fild_key}/{fild_value}/',
+                  {'page': page, 'length': length, 'sorted': sorted, 'sort_key': sort_key,
+                   'fild_key': fild_key, 'fild_value': fild_value, "error": str(e)},
+                  'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
+# Получение истории документа
 @router.get('/log/{document_id}/')
 async def get_doc_history(request: Request, response: Response, document_id: str) -> dict:
     try:
@@ -178,6 +260,11 @@ async def get_doc_history(request: Request, response: Response, document_id: str
             request, response, 0)
 
         if len(session) <= 0:
+            log_event(request,
+                      response,
+                      f'/company/log/{document_id}/',
+                      {'document_id': document_id},
+                      'Unauthorized or invalid sesion')  # Log
             # Exception
             return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -193,9 +280,13 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 
         log_collection = result.get("log_collection")
         if log_collection is None:
+            log_event(request,
+                      response,
+                      f'/company/log/{document_id}/',
+                      {'document_id': document_id},
+                      'Log_collection is null')  # Log
             # Exception
             return JSONResponse(content={"message": "Log_collection is null"}, status_code=400)
-        
 
         for log in log_collection:
             old_data = get_serialize_document(log['old_data'])
@@ -211,13 +302,25 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 
         log_count = len(log_collection)
 
+        log_event(request,
+                  response,
+                  f'/company/log/{document_id}/',
+                  {'document_id': document_id},
+                  'Successfully')  # Log
+
         # Success
         return JSONResponse(content={"message": "Successfully", "data": {'log_collection': log_collection, 'log_count': log_count}})
     except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/log/{document_id}/',
+                  {'document_id': document_id, "error": str(e)},
+                  'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
-    
 
+
+# Получение истории документа
 @router.get('/log/{document_id}/{log_id}')
 async def get_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
     try:
@@ -225,6 +328,11 @@ async def get_doc_history(request: Request, response: Response, document_id: str
             request, response, 0)
 
         if len(session) <= 0:
+            log_event(request,
+                      response,
+                      f'/company/log/{document_id}/{log_id}',
+                      {'document_id': document_id, 'log_id': log_id},
+                      'Unauthorized or invalid sesion')  # Log
             # Exception
             return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
 
@@ -238,13 +346,17 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 
         result = await data_colection.find_one(filter)
 
-        log_collection : list = result.get("log_collection")
+        log_collection: list = result.get("log_collection")
         if log_collection is None:
+            log_event(request,
+                      response,
+                      f'/company/log/{document_id}/{log_id}',
+                      {'document_id': document_id, 'log_id': log_id},
+                      'Log_collection is null')  # Log
             # Exception
             return JSONResponse(content={"message": "Log_collection is null"}, status_code=400)
-        
 
-        document = dict()     
+        document = dict()
 
         for log in log_collection:
             if (log['log_id'] == ObjectId(log_id)):
@@ -261,15 +373,20 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 
                 break
 
-        
-
-
-
+        log_event(request,
+                  response,
+                  f'/company/log/{document_id}/{log_id}/',
+                  {'document_id': document_id, 'log_collection': document},
+                  'Successfully')  # Log
 
         # Success
         return JSONResponse(content={"message": "Successfully", "data": {'log_collection': document}})
     except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/log/{document_id}/{log_id}/',
+                  {'document_id': document_id,
+                      'log_id': log_id, "error": str(e)},
+                  'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
-    
-

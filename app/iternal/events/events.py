@@ -25,6 +25,11 @@ def startup_event(app) -> AsyncIOMotorClient:
         users_colection.create_index([("login", ASCENDING)], unique=True)
     except:
         pass
+    try:
+        api_events_log_colection = app.state.database.get_collection("api_events_log_colection")
+        api_events_log_colection.create_index("time", expireAfterSeconds=30*60*60*24)
+    except:
+        pass
 
     app.state.r_session: RSessions = RSessions()
 

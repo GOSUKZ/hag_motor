@@ -1,6 +1,18 @@
 from pydantic import BaseModel
 from typing import Optional
 
+class LoginUser(BaseModel):
+    login: str
+    password: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                'login': "admin",
+                'password': "admin"
+            }
+        }
+
 class RegUser(BaseModel):
     login: str
     password: str
