@@ -17,7 +17,7 @@ router = APIRouter(
 
 
 # Получение документов
-@router.get('/')
+@router.get('/find/')
 async def get_docs(request: Request, response: Response, page: int = 0, length: int = 10) -> dict:
     try:
         if ((page < 0) or (length < 0)):
@@ -86,7 +86,7 @@ async def get_docs(request: Request, response: Response, page: int = 0, length: 
 
 
 # Сортировка и получение документов
-@router.get('/{sort_key}/')
+@router.get('/find/{sort_key}/')
 async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id') -> dict:
     try:
         if ((page < 0) or (length < 0)):
@@ -165,7 +165,7 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
 
 
 # Сортировка, группировка и получение документов
-@router.get('/{sort_key}/{fild_key}/{fild_value}/')
+@router.get('/find/{sort_key}/{fild_key}/{fild_value}/')
 async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id', fild_key: str = 'weight', fild_value: str = '10.5') -> dict:
     try:
         if ((page < 0) or (length < 0)):
@@ -321,7 +321,7 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 
 
 # Получение истории документа
-@router.get('/log/{document_id}/{log_id}')
+@router.get('/log/{document_id}/{log_id}/')
 async def get_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
     try:
         session = request.app.state.r_session.protected_session(
@@ -392,7 +392,8 @@ async def get_doc_history(request: Request, response: Response, document_id: str
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
 
 
-@router.get('/manager')
+# Список всех сотрудников
+@router.get('/manager/')
 async def get_manager_list(request: Request, response: Response):
     try:
         session = request.app.state.r_session.protected_session(
@@ -413,11 +414,12 @@ async def get_manager_list(request: Request, response: Response):
         database = request.app.state.database
         user_colection = database.get_collection("users")
 
-        filter = {'company_key': {'$in': [company_key]}, 'role' : {'$lt' : 1000}}
+        filter = {'company_key': {'$in': [company_key]}, 'role': {'$lt': 1000}}
 
         documents = []
 
-        cursor = user_colection.find(filter, {'login' : 1, 'role': 1, 'created_at': 1, 'session_id' : 1})
+        cursor = user_colection.find(
+            filter, {'login': 1, 'role': 1, 'created_at': 1, 'session_id': 1})
         async for document in cursor:
             documents.append(get_serialize_document(document))
 
@@ -435,6 +437,62 @@ async def get_manager_list(request: Request, response: Response):
         log_event(request,
                   response,
                   f'/company/manager',
+                  filter,
+                  'Get documents error')  # Log
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+# Получить сводную таблицу для всех клиентов
+@router.get('/pivot/')
+async def get_pivot_all(request: Request, response: Response):
+    try:
+        session = request.app.state.r_session.protected_session(
+            request, response, 0)
+
+        if len(session) <= 0:
+            log_event(request,
+                      response,
+                      '/company/pivot',
+                      {},
+                      'Unauthorized or invalid sesion')  # Log
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.mongodb[company_key]
+        data_colection = database.get_collection("data")
+        pipeline = [
+            {
+                "$group": {
+                    "_id": "$code",  
+                    "totalValue": {"$sum": "$total"}
+                }
+            }
+        ]
+
+        documents = []
+
+        # Perform the aggregation
+        async for result in data_colection.aggregate(pipeline):
+            documents.append(result)
+
+        documents_count = len(documents)
+
+        log_event(request,
+                  response,
+                  f'/company/pivot',
+                  {"documents": documents, "documents_count": documents_count},
+                  'Successfully')  # Log
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": {"managers": documents, "managers_count": documents_count}})
+    except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/pivot',
                   filter,
                   'Get documents error')  # Log
         # Exception
