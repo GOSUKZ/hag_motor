@@ -467,7 +467,7 @@ async def get_pivot_all(request: Request, response: Response):
         pipeline = [
             {
                 "$group": {
-                    "_id": "$code",  
+                    "_id": "$code",
                     "totalValue": {"$sum": "$total"}
                 }
             }
@@ -488,12 +488,75 @@ async def get_pivot_all(request: Request, response: Response):
                   'Successfully')  # Log
 
         # Success
-        return JSONResponse(content={"message": "Successfully", "data": {"managers": documents, "managers_count": documents_count}})
+        return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count}})
     except Exception as e:
         log_event(request,
                   response,
                   f'/company/pivot',
-                  filter,
+                  pipeline,
+                  'Get documents error')  # Log
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+# Получить сводную таблицу для всех клиентов
+@router.get('/pivot/{code}')
+async def get_pivot_all(request: Request, response: Response, code: str):
+    try:
+        session = request.app.state.r_session.protected_session(
+            request, response, 0)
+
+        if len(session) <= 0:
+            log_event(request,
+                      response,
+                      '/company/pivot',
+                      {},
+                      'Unauthorized or invalid sesion')  # Log
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.mongodb[company_key]
+        data_colection = database.get_collection("data")
+
+        # Define the aggregation pipeline
+        pipeline = [
+            {
+                "$match": {
+                    "code": code  # Only include documents with category
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$code",
+                    "totalValue": {"$sum": "$total"}
+                }
+            }
+        ]
+
+        documents = []
+
+        # Perform the aggregation
+        async for result in data_colection.aggregate(pipeline):
+            documents.append(result)
+
+        documents_count = len(documents)
+
+        log_event(request,
+                  response,
+                  f'/company/pivot',
+                  {"documents": documents, "documents_count": documents_count},
+                  'Successfully')  # Log
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count}})
+    except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/pivot',
+                  pipeline,
                   'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
