@@ -117,7 +117,7 @@ async def post_login(request: Request, response: Response, company_key: str):
               f'/auth/login/{company_key}',
               {"session_id": session_id, "company_key": company_key, 'session': session},
               'Success login')  # Log
-    return {'message': 'Success login', 'data': {"session_id": session_id, "company_key": company_key}}
+    return {'message': 'Success login', 'data': {"session_id": session_id, "company_key": company_key, 'role': role}}
 
 
 # Выход
