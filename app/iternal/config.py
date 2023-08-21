@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     HOST: str = environ.get('HOST')
 
     class Config:
-        env_file = f'{path.dirname(path.abspath(__file__))}/app/.env'
+        env_file = f'./.env'
 
 
 #*to run locally replace with

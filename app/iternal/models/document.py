@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 
 
 class Document(BaseModel):
@@ -39,19 +39,19 @@ class UpdateDocument(BaseModel):
     phone: Optional[str]
     code: Optional[str]
     description: Optional[str]
-    coount: Optional[int]
+    count: Optional[int]
     weight: Optional[float]
     space: Optional[float]
     density: Optional[float]
     place_delivery: Optional[str]
-    packaging: Optional[float | str]
-    delivery: Optional[float | str]
-    other: Optional[float | str]
-    insurance: Optional[int | str]
-    unit_price: Optional[float | str]
-    total: Optional[float | str]
-    arrival_date: Optional[float | str]
-    received_positions: Optional[float | str]
+    packaging: Optional[Union[float, str]]
+    delivery: Optional[Union[float, str]]
+    other: Optional[Union[float, str]]
+    insurance: Optional[Union[int, str]]
+    unit_price: Optional[Union[float, str]]
+    total: Optional[Union[float, str]]
+    arrival_date: Optional[Union[float, str]]
+    received_positions: Optional[Union[float, str]]
 
 
 class UpdateDocumentManagerO(BaseModel):
@@ -61,17 +61,17 @@ class UpdateDocumentManagerO(BaseModel):
     phone: Optional[str]
     code: Optional[str]
     description: Optional[str]
-    coount: Optional[int]
-    weight: Optional[float | str]
-    space: Optional[float | str]
-    density: Optional[float | str]
-    place_deivery: Optional[str | str]
-    packaging: Optional[float | str]
-    delivery: Optional[float | str]
-    other: Optional[float | str]
-    insurance: Optional[int | str]
-    unit_price: Optional[float | str]
-    total: Optional[float | str]
+    count: Optional[int]
+    weight: Optional[Union[float, str]]
+    space: Optional[Union[float, str]]
+    density: Optional[Union[float, str]]
+    place_delivery: Optional[str]
+    packaging: Optional[Union[float, str]]
+    delivery: Optional[Union[float, str]]
+    other: Optional[Union[float, str]]
+    insurance: Optional[Union[int, str]]
+    unit_price: Optional[Union[float, str]]
+    total: Optional[Union[float, str]]
 
 
 class UpdateDocumentManagerI(BaseModel):

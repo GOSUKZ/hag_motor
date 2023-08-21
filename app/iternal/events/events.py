@@ -5,7 +5,7 @@ from app.iternal.db.sessiondb import RSessions
 from pymongo import DESCENDING, ASCENDING
 
 DATABASE_URL = settings.DATABASE_URL
-MONGO_INITDB_DATABASE = settings.MONGO_INITDB_DATABASE
+MONGO_INITDB_DATABASE = 'hag'#settings.MONGO_INITDB_DATABASE
 
 
 def startup_event(app) -> AsyncIOMotorClient:

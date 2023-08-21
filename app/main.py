@@ -5,7 +5,7 @@ from app.configuration.server import Server
 
 app = FastAPI(
     title="Hag",
-    version="0.0.25"
+    version="0.1.9"
 )
 
 app.add_middleware(
