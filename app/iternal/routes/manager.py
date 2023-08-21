@@ -16,8 +16,61 @@ router = APIRouter(
 )
 
 
+
+# Добавление записи
+@router.post('/add/')
+async def post_add_document(request: Request, response: Response, payload: UpdateDocument = Body(...)):
+    try:
+        session = request.app.state.r_session.protected_session(request,
+                                                                response, 1, 2)
+        if len(session) > 0:
+            payload = jsonable_encoder(
+                UpdateDocumentManagerO.validate(payload))
+            payload = jsonable_encoder(UpdateDocument.validate(payload))
+
+            company_key = session.get("company_key")
+
+            # Connect to DB connection
+            database = request.app.state.mongodb[company_key]
+            data_collection = database.get_collection("data")
+
+            # Convert str to datetime if exists reservation name date
+            for key, value in payload.items():
+                if (value and (key.find('date') >= 0)):
+                    if (len(value) <= len("2023-01-16 00:00:00")):
+                        payload[key] = f"{value}.000000"
+                    payload[key] = datetime.strptime(
+                        payload[key], "%Y-%m-%d %H:%M:%S.%f")
+
+            result = await data_collection.insert_one(payload)
+
+            ducument = await data_collection.find_one({'_id': result.inserted_id})
+            ducument = get_serialize_document(ducument)
+
+            log_event(request,
+                      response,
+                      f'/manager/new/',
+                      {'payload': payload, 'result': [ducument]},
+                      'Successfully')  # Log
+
+            # Success
+            return JSONResponse(content={"message": "Successfully", "data": [ducument]})
+
+        # Exception
+        return JSONResponse(content={"message": "Unauthorized or invalid session"}, status_code=401)
+    except Exception as e:
+
+        log_event(request,
+                  response,
+                  f'/manager/new/',
+                  {'payload': payload, "error": str(e)},
+                  'Add documents error')  # Log
+        # Exception
+        return JSONResponse(content={"message": "Add documents error", "error": str(e)}, status_code=500)
+
+
 # Обнавление данных в записи
-@router.post('/{document_id}/')
+@router.post('/put/{document_id}/')
 async def post_update_document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
     try:
         session = request.app.state.r_session.protected_session(request,
@@ -53,12 +106,12 @@ async def post_update_document(request: Request, response: Response, document_id
                 result = await myLoggerUpdate.find_update(filter,
                                                           update,
                                                           login,
-                                                          f'/manager/{document_id}/')
+                                                          f'/manager/put/{document_id}/')
 
                 if (result is None):
                     log_event(request,
                               response,
-                              f'/manager/{document_id}/',
+                              f'/manager/put/{document_id}/',
                               payload,
                               'Document not found')  # Log
                     # Exception
@@ -68,7 +121,7 @@ async def post_update_document(request: Request, response: Response, document_id
 
                 log_event(request,
                           response,
-                          f'/manager/{document_id}/',
+                          f'/manager/put/{document_id}/',
                           {'payload': payload, 'result': [result]},
                           'Successfully')  # Log
 
@@ -76,7 +129,7 @@ async def post_update_document(request: Request, response: Response, document_id
                 return JSONResponse(content={"message": "Successfully", "data": [result]})
             log_event(request,
                       response,
-                      f'/manager/{document_id}/',
+                      f'/manager/put/{document_id}/',
                       {'payload': payload, 'result': []},
                       'Successfully')  # Log
             # Success
@@ -117,12 +170,12 @@ async def post_update_document(request: Request, response: Response, document_id
                 result = await myLoggerUpdate.find_update(filter,
                                                           update,
                                                           login,
-                                                          f'/manager/{document_id}/')
+                                                          f'/manager/put/{document_id}/')
 
                 if (result is None):
                     log_event(request,
                               response,
-                              f'/manager/{document_id}/',
+                              f'/manager/put/{document_id}/',
                               payload,
                               'Document not found')  # Log
                     # Exception
@@ -132,7 +185,7 @@ async def post_update_document(request: Request, response: Response, document_id
 
                 log_event(request,
                           response,
-                          f'/manager/{document_id}/',
+                          f'/manager/put/{document_id}/',
                           {'payload': payload, 'result': [result]},
                           'Successfully')  # Log
 
@@ -140,7 +193,7 @@ async def post_update_document(request: Request, response: Response, document_id
                 return JSONResponse(content={"message": "Successfully", "data": [result]})
             log_event(request,
                       response,
-                      f'/manager/{document_id}/',
+                      f'/manager/put/{document_id}/',
                       {'payload': payload, 'result': []},
                       'Successfully')  # Log
             # Success
@@ -148,7 +201,7 @@ async def post_update_document(request: Request, response: Response, document_id
 
         log_event(request,
                   response,
-                  f'/manager/{document_id}/',
+                  f'/manager/put/{document_id}/',
                   payload,
                   'Unauthorized or invalid sesion')  # Log
 
@@ -158,7 +211,7 @@ async def post_update_document(request: Request, response: Response, document_id
 
         log_event(request,
                   response,
-                  f'/manager/{document_id}/',
+                  f'/manager/put/{document_id}/',
                   {'payload': payload, "error": str(e)},
                   'Get documents error')  # Log
         # Exception

@@ -201,8 +201,8 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
 
 
 # Обнавление данных в записи
-@router.post('/{document_id}/')
-async def post_update__document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
+@router.post('/put/{document_id}/')
+async def post_update_document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
     try:
         payload = jsonable_encoder(payload)
 
@@ -240,7 +240,7 @@ async def post_update__document(request: Request, response: Response, document_i
         result = await myLoggerUpdate.find_update(filter,
                                                   update,
                                                   login,
-                                                  f'user/{document_id}')
+                                                  f'user/put/{document_id}')
 
         if (result is None):
             # Exception
@@ -250,6 +250,45 @@ async def post_update__document(request: Request, response: Response, document_i
 
         # Success
         return JSONResponse(content={"message": "Successfully", "data": [result]})
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+# Создание записи
+@router.post('/add/')
+async def post_add_document(request: Request, response: Response, payload: UpdateDocument = Body(...)):
+    try:
+        payload = jsonable_encoder(payload)
+
+        session = request.app.state.r_session.protected_session(
+            request, response, 99)
+
+        if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid session"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.mongodb[company_key]
+        data_collection = database.get_collection("data")
+
+        # Convert str to datetime if exists reservation name date
+        for key, value in payload.items():
+            if (value and (key.find('date') >= 0)):
+                if (len(value) <= len("2023-01-16 00:00:00")):
+                    payload[key] = f"{value}.000000"
+                payload[key] = datetime.strptime(
+                    payload[key], "%Y-%m-%d %H:%M:%S.%f")
+
+        result = await data_collection.insert_one(payload)
+        ducument = await data_collection.find_one({'_id' : result.inserted_id})
+
+        ducument = get_serialize_document(ducument)
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": [ducument]})
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
