@@ -390,3 +390,52 @@ async def get_doc_history(request: Request, response: Response, document_id: str
                   'Get documents error')  # Log
         # Exception
         return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)
+
+
+@router.get('/manager')
+async def get_manager_list(request: Request, response: Response):
+    try:
+        session = request.app.state.r_session.protected_session(
+            request, response, 0)
+
+        if len(session) <= 0:
+            log_event(request,
+                      response,
+                      '/company/manager',
+                      {},
+                      'Unauthorized or invalid sesion')  # Log
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+
+        company_key = session.get("company_key")
+
+        # Connect to DB connection
+        database = request.app.state.database
+        user_colection = database.get_collection("users")
+
+        filter = {'company_key': {'$in': [company_key]}, 'role' : {'$lt' : 1000}}
+
+        documents = []
+
+        cursor = user_colection.find(filter, {'login' : 1, 'role': 1, 'created_at': 1, 'session_id' : 1})
+        async for document in cursor:
+            documents.append(get_serialize_document(document))
+
+        documents_count = len(documents)
+
+        log_event(request,
+                  response,
+                  f'/company/manager',
+                  {"documents": documents, "documents_count": documents_count},
+                  'Successfully')  # Log
+
+        # Success
+        return JSONResponse(content={"message": "Successfully", "data": {"managers": documents, "managers_count": documents_count}})
+    except Exception as e:
+        log_event(request,
+                  response,
+                  f'/company/manager',
+                  filter,
+                  'Get documents error')  # Log
+        # Exception
+        return JSONResponse(content={"message": "Get documents error", "error": str(e)}, status_code=500)

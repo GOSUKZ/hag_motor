@@ -47,7 +47,6 @@ class RSessions:
         # Setting cookie
         response.set_cookie(key="session_id", value=session_id)
         
-        print('session_id: ', session_id)
         return session_id
 
     # Get session data

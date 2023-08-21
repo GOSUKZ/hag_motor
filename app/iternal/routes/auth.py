@@ -40,7 +40,7 @@ async def post_login(request: Request, response: Response, payload: LoginUser = 
 
     verification = request.app.state.r_session.verify_key(
         password, hash_password)
-
+    
     # Pass not valid
     if (not verification):
         log_event(request,
@@ -55,7 +55,7 @@ async def post_login(request: Request, response: Response, payload: LoginUser = 
     session_data = {'login': login, 'role': -1}
     session_id = request.app.state.r_session.create_session(request,
                                                             response,
-                                                            session_data)
+                                                            session_data)    
     log_event(request,
               response,
               '/auth/login',
