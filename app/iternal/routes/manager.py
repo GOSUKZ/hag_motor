@@ -20,6 +20,9 @@ router = APIRouter(
 # Добавление записи
 @router.post('/add/')
 async def post_add_document(request: Request, response: Response, payload: UpdateDocument = Body(...)):
+    origin = request.headers['origin']
+    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+
     try:
         session = request.app.state.r_session.protected_session(request,
                                                                 response, 1, 2)
@@ -72,6 +75,9 @@ async def post_add_document(request: Request, response: Response, payload: Updat
 # Обнавление данных в записи
 @router.post('/put/{document_id}/')
 async def post_update_document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
+    origin = request.headers['origin']
+    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+
     try:
         session = request.app.state.r_session.protected_session(request,
                                                                 response, 1, 2)
@@ -221,6 +227,9 @@ async def post_update_document(request: Request, response: Response, document_id
 # Возврат по истории
 @router.get('/log/{document_id}/{log_id}')
 async def get_reverting_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
+    origin = request.headers['origin']
+    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    
     try:
         session = request.app.state.r_session.protected_session(request,
                                                                 response, 1, 2)

@@ -45,7 +45,7 @@ class RSessions:
         self.__db.expire(session_id, self.__expiry)
 
         # Setting cookie
-        response.set_cookie(key="session_id", value=session_id)
+        response.set_cookie(key="session_id", value=session_id, httponly=True, samesite='strict')
         
         return session_id
 
