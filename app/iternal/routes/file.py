@@ -25,8 +25,9 @@ router = APIRouter(
 # Выгрузка файла
 @router.post("/upload/")
 async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     session = request.app.state.r_session.protected_session(
         request, response, 1)
@@ -130,8 +131,9 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
 # Подтверждение выгрузки
 @router.post("/confirm/{id}")
 async def confirm_file(request: Request, response: Response, id: str):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     session = request.app.state.r_session.protected_session(
         request, response, 1)
@@ -264,8 +266,9 @@ async def confirm_file(request: Request, response: Response, id: str):
 # Скачивание файла
 @router.get("/export_excel/")
 async def export_excel(request: Request, response: Response):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     session = request.app.state.r_session.protected_session(
         request, response, 1)
@@ -352,8 +355,9 @@ async def export_excel(request: Request, response: Response):
 # Работа с конфликтами ------------------------
 @router.get("/conflict/{conflict_id}")
 async def get_all_conflict_id(request: Request, response: Response, conflict_id: str):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     session = request.app.state.r_session.protected_session(
         request, response, 1)
@@ -421,8 +425,9 @@ async def get_all_conflict_id(request: Request, response: Response, conflict_id:
 
 @router.get("/conflict/{id}/{object_id}")
 async def get_conflict_by_id(request: Request, response: Response, id: str, object_id: str):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     session = request.app.state.r_session.protected_session(
         request, response, 1)
@@ -471,8 +476,9 @@ async def get_conflict_by_id(request: Request, response: Response, id: str, obje
 
 @router.get("/conflict/{id}/{object_id}/{action}")
 async def resolved_conflict(request: Request, response: Response, id: str, object_id: str, action: str):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
     
     session = request.app.state.r_session.protected_session(
         request, response, 1)

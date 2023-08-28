@@ -19,8 +19,9 @@ router = APIRouter(
 # Получение документов
 @router.get('/find/')
 async def get_docs(request: Request, response: Response, page: int = 0, length: int = 10) -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         if ((page < 0) or (length < 0)):
@@ -91,8 +92,9 @@ async def get_docs(request: Request, response: Response, page: int = 0, length: 
 # Сортировка и получение документов
 @router.get('/find/{sort_key}/')
 async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id') -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         if ((page < 0) or (length < 0)):
@@ -173,8 +175,9 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
 # Сортировка, группировка и получение документов
 @router.get('/find/{sort_key}/{fild_key}/{fild_value}/')
 async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id', fild_key: str = 'weight', fild_value: str = '10.5') -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         if ((page < 0) or (length < 0)):
@@ -264,8 +267,9 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
 # Получение истории документа
 @router.get('/log/{document_id}/')
 async def get_doc_history(request: Request, response: Response, document_id: str) -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         session = request.app.state.r_session.protected_session(
@@ -335,8 +339,9 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 # Получение истории документа
 @router.get('/log/{document_id}/{log_id}/')
 async def get_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         session = request.app.state.r_session.protected_session(
@@ -410,8 +415,9 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 # Список всех сотрудников
 @router.get('/manager/')
 async def get_manager_list(request: Request, response: Response):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         session = request.app.state.r_session.protected_session(
@@ -464,8 +470,9 @@ async def get_manager_list(request: Request, response: Response):
 # Получить сводную таблицу для всех клиентов
 @router.get('/pivot/')
 async def get_pivot_all(request: Request, response: Response):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         session = request.app.state.r_session.protected_session(
@@ -523,8 +530,9 @@ async def get_pivot_all(request: Request, response: Response):
 # Получить сводную таблицу для всех клиентов
 @router.get('/pivot/{code}')
 async def get_pivot_all(request: Request, response: Response, code: str):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
     
     try:
         session = request.app.state.r_session.protected_session(

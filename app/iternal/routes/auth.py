@@ -14,8 +14,9 @@ router = APIRouter(
 @router.post("/login")
 async def post_login(request: Request, response: Response, payload: LoginUser = Body(...)):
 
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
     
     payload = jsonable_encoder(payload)
 
@@ -72,8 +73,9 @@ async def post_login(request: Request, response: Response, payload: LoginUser = 
 # Авторизация пользователя
 @router.post("/login/{company_key}")
 async def post_login(request: Request, response: Response, company_key: str):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     session = request.app.state.r_session.protected_session(
         request, response, -1)
@@ -130,8 +132,9 @@ async def post_login(request: Request, response: Response, company_key: str):
 # Выход
 @router.post('/logout')
 async def post_logout(request: Request, response: Response) -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
     
     await log_event(request,
                     response,

@@ -13,8 +13,8 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Set-Cookie", 'date', 'etag', 'access-control-allow-origin', 'access-control-allow-credentials']
+    allow_headers=["*"], 
+    expose_headers=["Set-Cookie"]
 )
 
 @app.get('/')

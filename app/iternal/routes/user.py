@@ -20,8 +20,9 @@ router = APIRouter(
 # Добавление компании
 @router.post('/new_company/')
 async def post_create_company(request: Request, response: Response, payload: Company = Body(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         payload = jsonable_encoder(payload)
@@ -86,8 +87,9 @@ async def post_create_company(request: Request, response: Response, payload: Com
 # Изменение записи о менеджере
 @router.post('/change/')
 async def post_manager(request: Request, response: Response, payload: ChangeUser = Body(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         session = request.app.state.r_session.protected_session(
@@ -153,8 +155,9 @@ async def post_manager(request: Request, response: Response, payload: ChangeUser
 # Регистрация менеджера
 @router.post('/reg/{manager_type}')
 async def post_manager(request: Request, response: Response, manager_type: str, payload: RegUser = Body(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         session = request.app.state.r_session.protected_session(
@@ -212,8 +215,9 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
 # Обнавление данных в записи
 @router.post('/put/{document_id}/')
 async def post_update_document(request: Request, response: Response, document_id: str, payload: UpdateDocument = Body(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         payload = jsonable_encoder(payload)
@@ -270,8 +274,9 @@ async def post_update_document(request: Request, response: Response, document_id
 # Создание записи
 @router.post('/add/')
 async def post_add_document(request: Request, response: Response, payload: UpdateDocument = Body(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
         payload = jsonable_encoder(payload)
@@ -312,8 +317,9 @@ async def post_add_document(request: Request, response: Response, payload: Updat
 # Возврат по истории
 @router.get('/log/{document_id}/{log_id}')
 async def get_reverting_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
     
     try:
         session = request.app.state.r_session.protected_session(request,

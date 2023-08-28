@@ -14,8 +14,9 @@ router = APIRouter(
 # Регистрация новых админов
 @router.post('/reg/')
 async def post_registration(request: Request, response: Response, payload: RegUser = Body(...)):
-    origin = request.headers['origin']
-    response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
     
     try:
         payload = jsonable_encoder(payload)
