@@ -214,7 +214,7 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
 
 # Дерегистрация менеджера
 @router.post('/del/{login}')
-async def post_manager(request: Request, response: Response, login:str):
+async def post_del_manager(request: Request, response: Response, login:str):
     origin = request.headers.get('origin')
     if (origin) :
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
@@ -229,22 +229,25 @@ async def post_manager(request: Request, response: Response, login:str):
 
         # Connect to DB connection
         database = request.app.state.database
-        users_collection = database.get_collection("users")
 
-        filter = {"login": login}
-        result = await users_collection.find_one(filter)
+        user_colection = database.get_collection("users")
 
-        if (result is not None):
+        company_key = [session.get("company_key")]
+
+        filter = {'login':login, 'company_key': {'$in': [company_key]}, 'role': {'$lt': 99}}
+        result = await user_colection.find_one(filter)
+
+        if (result is None):
             # Exception
             return JSONResponse(content={"message": 'Login not exists', "data": 0}, status_code=404)
 
-        await users_collection.delete_one(filter)
+        await user_colection.delete_one(filter)
 
         # Success
-        return JSONResponse(content={"message": "Registration successfully", "data": 0}, status_code=200)
+        return JSONResponse(content={"message": "Disintegration successfully", "data": 0}, status_code=200)
     except Exception as e:
         # Exception
-        return JSONResponse(content={"message": "Registration error", "error": str(e)}, status_code=500)
+        return JSONResponse(content={"message": "Disintegration error", "error": str(e)}, status_code=500)
 
 
 # Обнавление данных в записи

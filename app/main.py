@@ -21,4 +21,4 @@ app.add_middleware(
 def index():
     return {"message": 'Hello Wor...MongoDB'}
 
-server = Server(app).get_app() 
+server = Server(app).get_app()
