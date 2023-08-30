@@ -210,6 +210,41 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
     except Exception as e:
         # Exception
         return JSONResponse(content={"message": "Registration error", "error": str(e)}, status_code=500)
+    
+
+# Дерегистрация менеджера
+@router.post('/del/{login}')
+async def post_manager(request: Request, response: Response, login:str):
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
+
+    try:
+        session = request.app.state.r_session.protected_session(
+            request, response, 99)
+
+        if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid session"}, status_code=401)
+
+        # Connect to DB connection
+        database = request.app.state.database
+        users_collection = database.get_collection("users")
+
+        filter = {"login": login}
+        result = await users_collection.find_one(filter)
+
+        if (result is not None):
+            # Exception
+            return JSONResponse(content={"message": 'Login not exists', "data": 0}, status_code=404)
+
+        await users_collection.delete_one(filter)
+
+        # Success
+        return JSONResponse(content={"message": "Registration successfully", "data": 0}, status_code=200)
+    except Exception as e:
+        # Exception
+        return JSONResponse(content={"message": "Registration error", "error": str(e)}, status_code=500)
 
 
 # Обнавление данных в записи
