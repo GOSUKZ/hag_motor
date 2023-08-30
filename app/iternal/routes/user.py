@@ -234,7 +234,7 @@ async def post_del_manager(request: Request, response: Response, login:str):
 
         company_key = [session.get("company_key")]
 
-        filter = {'login':login, 'company_key': {'$in': [company_key]}, 'role': {'$lt': 99}}
+        filter = {'login':login, 'company_key': {'$in': company_key}, 'role': {'$lt': 99}}
         result = await user_colection.find_one(filter)
 
         if (result is None):
