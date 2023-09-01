@@ -302,7 +302,7 @@ async def get_doc_history(request: Request, response: Response, document_id: str
                       {'document_id': document_id},
                       'Log_collection is null')  # Log
             # Exception
-            return JSONResponse(content={"message": "Log_collection is null"}, status_code=400)
+            return JSONResponse(content={"message": "Log_collection is null", "data": {'log_collection': [], 'log_count': 0}})
 
         for log in log_collection:
             old_data = get_serialize_document(log['old_data'])
@@ -374,7 +374,7 @@ async def get_doc_history(request: Request, response: Response, document_id: str
                       {'document_id': document_id, 'log_id': log_id},
                       'Log_collection is null')  # Log
             # Exception
-            return JSONResponse(content={"message": "Log_collection is null"}, status_code=400)
+            return JSONResponse(content={"message": "Log_collection is null", "data": {'log_collection': {}}})
 
         document = dict()
 
