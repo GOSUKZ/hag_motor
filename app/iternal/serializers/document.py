@@ -38,7 +38,7 @@ temp_model = {
     "phone": "str",
     "code": "str",
     "description": "str",
-    "coount": 'int',
+    "count": 'int',
     "weight": "float",
     "space": "float",
     "density": "float",

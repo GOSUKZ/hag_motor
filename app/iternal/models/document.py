@@ -9,7 +9,7 @@ class Document(BaseModel):
     phone: str
     code: str
     description: str
-    coount: int
+    count: int
     weight: float
     space: float
     density: float

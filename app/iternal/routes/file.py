@@ -296,7 +296,7 @@ async def export_excel(request: Request, response: Response):
 
         result = await data_colection.find({}).to_list(None)
 
-        # total = {'coount': 0, 'weight': 0, 'space': 0, 'density': 0, 'packaging': 0,
+        # total = {'count': 0, 'weight': 0, 'space': 0, 'density': 0, 'packaging': 0,
         #          'delivery': 0, 'other': 0, 'insurance': 0, 'unit_price': 0, 'total': 0}
 
         total = {}
@@ -561,7 +561,7 @@ async def upload_generated_file(data_colection, upload_colection, now, action_ex
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:20]
 
-    title_list = ['_id', 'date', 'place_sending', 'type', 'phone', 'code', 'description', 'coount', 'weight', 'space', 'density',
+    title_list = ['_id', 'date', 'place_sending', 'type', 'phone', 'code', 'description', 'count', 'weight', 'space', 'density',
                   'place_delivery', 'packaging', 'delivery', 'other', 'insurance', 'unit_price', 'total', 'arrival_date', 'received_positions']
 
     data_list = []
@@ -623,7 +623,7 @@ async def upload_external_file(upload_colection, now, action_extended_id, list_d
     for i in range(len(list_data)):
         list_data[i] = list_data[i][:19]
 
-    title_list = ['date', 'place_sending', 'type', 'phone', 'code', 'description', 'coount', 'weight', 'space', 'density',
+    title_list = ['date', 'place_sending', 'type', 'phone', 'code', 'description', 'count', 'weight', 'space', 'density',
                   'place_delivery', 'packaging', 'delivery', 'other', 'insurance', 'unit_price', 'total', 'arrival_date', 'received_positions']
 
     data_list = []
