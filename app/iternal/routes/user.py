@@ -186,6 +186,11 @@ async def post_manager(request: Request, response: Response, manager_type: str, 
         login = payload.get('login')
         role = payload.get('role')
 
+        if (manager_type == 'inside'):
+            role = 1
+        if (manager_type == 'outside'):
+            role = 0
+
         if role > admin_role:
             role = admin_role
 
@@ -294,7 +299,8 @@ async def post_update_document(request: Request, response: Response, document_id
         result = await myLoggerUpdate.find_update(filter,
                                                   update,
                                                   login,
-                                                  f'user/put/{document_id}')
+                                                  f'user/put/{document_id}',
+                                                  True)
 
         if (result is None):
             # Exception

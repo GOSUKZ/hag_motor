@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from bson.objectid import ObjectId
+from pymongo import ReturnDocument
 
 
 class CustomUpdate:
@@ -43,7 +44,7 @@ class CustomUpdate:
         except:
             pass
 
-    async def __find_update_task(self, filter, update, login, additional):
+    async def __find_update_task(self, filter, update, login, additional, return_after=False):
         now = datetime.utcnow()
         update['$set']['updated_at'] = now
 
@@ -51,7 +52,12 @@ class CustomUpdate:
             print('update: ', update)
             print('filter: ', filter)
             del update['$set']['_id']
-        old_data = await self.__collection.find_one_and_update(filter, update, {'upsert': False})
+
+        return_document = ReturnDocument.BEFORE
+        if (return_after):
+            return_document = ReturnDocument.AFTER
+
+        old_data = await self.__collection.find_one_and_update(filter, update, return_document=return_document, upsert=False)
         if old_data is not None:
             asyncio.create_task(self.__log_coroutine(filter,
                                                      old_data,
@@ -60,9 +66,10 @@ class CustomUpdate:
                                                      now))
         return old_data
 
-    async def find_update(self, filter, update, login='', additional=''):
+    async def find_update(self, filter, update, login='', additional='', return_after=False):
         task = asyncio.create_task(self.__find_update_task(filter,
                                                            update,
                                                            login,
-                                                           additional))
+                                                           additional,
+                                                           return_after))
         return await task

@@ -114,7 +114,8 @@ async def post_update_document(request: Request, response: Response, document_id
                 result = await myLoggerUpdate.find_update(filter,
                                                           update,
                                                           login,
-                                                          f'/manager/put/{document_id}/')
+                                                          f'/manager/put/{document_id}/',
+                                                          True)
 
                 if (result is None):
                     log_event(request,
@@ -178,7 +179,8 @@ async def post_update_document(request: Request, response: Response, document_id
                 result = await myLoggerUpdate.find_update(filter,
                                                           update,
                                                           login,
-                                                          f'/manager/put/{document_id}/')
+                                                          f'/manager/put/{document_id}/',
+                                                          True)
 
                 if (result is None):
                     log_event(request,
