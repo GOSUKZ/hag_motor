@@ -302,8 +302,10 @@ async def export_excel(request: Request, response: Response):
         total = {}
 
         for i in range(0, len(result)):
-            del result[i]["created_at"]
-            del result[i]["updated_at"]
+            if result[i].get("created_at"):
+                del result[i]["created_at"]
+            if result[i].get("updated_at"):
+                del result[i]["updated_at"]
             if result[i].get("log_collection") is not None:
                 del result[i]["log_collection"]
             result[i]["_"] = ""

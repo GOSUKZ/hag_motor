@@ -87,11 +87,8 @@ def is_convertable(s: str):
     except ValueError:
         pass
 
-    try:
-        id = ObjectId(s)
-        return id
-    except ValueError:
-        pass
+    if ObjectId.is_valid(s):
+        return ObjectId(s)
 
     return s
 
