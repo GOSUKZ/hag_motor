@@ -131,7 +131,7 @@ async def post_login(request: Request, response: Response, company_key: str):
 
 # Выход
 @router.post('/logout')
-async def post_logout(request: Request, response: Response) -> dict:
+async def post_logout(request: Request, response: Response):
     origin = request.headers.get('origin')
     if (origin) :
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
@@ -143,3 +143,18 @@ async def post_logout(request: Request, response: Response) -> dict:
                     'Logout successful')  # Log
     request.app.state.r_session.end_session(request, response)
     return {'message': 'Logout successful', 'data': 0}
+
+
+# Проверка сессии
+@router.post('/check')
+async def check(request: Request, response: Response):
+    origin = request.headers.get('origin')
+    if (origin) :
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
+    
+    session = request.app.state.r_session.protected_session(request, response, 0)
+    if len(session) <= 0:
+            # Exception
+            return JSONResponse(content={"message": "Unauthorized or invalid sesion"}, status_code=401)
+    
+    return JSONResponse(content={"message": "Access sesion"})
