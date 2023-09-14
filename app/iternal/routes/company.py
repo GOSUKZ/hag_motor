@@ -20,7 +20,7 @@ router = APIRouter(
 @router.get('/find/')
 async def get_docs(request: Request, response: Response, page: int = 0, length: int = 10) -> dict:
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
@@ -93,7 +93,7 @@ async def get_docs(request: Request, response: Response, page: int = 0, length: 
 @router.get('/find/{sort_key}/')
 async def get_docs_sorted(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id') -> dict:
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
@@ -176,7 +176,7 @@ async def get_docs_sorted(request: Request, response: Response, page: int = 0, l
 @router.get('/find/{sort_key}/{fild_key}/{fild_value}/')
 async def get_docs_sorted_grouping(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1, sort_key: str = '_id', fild_key: str = 'weight', fild_value: str = '10.5') -> dict:
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
@@ -268,7 +268,7 @@ async def get_docs_sorted_grouping(request: Request, response: Response, page: i
 @router.get('/log/{document_id}/')
 async def get_doc_history(request: Request, response: Response, document_id: str) -> dict:
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
@@ -340,7 +340,7 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 @router.get('/log/{document_id}/{log_id}/')
 async def get_doc_history(request: Request, response: Response, document_id: str, log_id: str) -> dict:
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
@@ -416,7 +416,7 @@ async def get_doc_history(request: Request, response: Response, document_id: str
 @router.get('/manager/')
 async def get_manager_list(request: Request, response: Response):
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
     try:
@@ -469,12 +469,36 @@ async def get_manager_list(request: Request, response: Response):
 
 # Получить сводную таблицу для всех клиентов
 @router.get('/pivot/')
-async def get_pivot_all(request: Request, response: Response):
+async def get_pivot_all(request: Request, response: Response, page: int = 0, length: int = 10, sorted: int = 1):
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
 
+    if ((page < 0) or (length < 0)):
+        log_event(request,
+                  response,
+                  f'/pivot',
+                  {'page': page, 'length': length, 'sorted': sorted},
+                  'Page or length out of range')  # Log
+        # Exception
+        return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
+
+    if ((sorted > 1) or (sorted < -1) or (sorted == 0)):
+        log_event(request,
+                  response,
+                  f'/pivot',
+                  {'page': page, 'length': length, 'sorted': sorted},
+                  'sorted out of range (1 - ASCENDING, -1 - DESCENDING)')  # Log
+        # Exception
+        return JSONResponse(content={"message": "sorted out of range (1 - ASCENDING, -1 - DESCENDING)"}, status_code=403)
+
     try:
+        # Calculate the number of documents to skip
+        skip = (page * length)
+
+        # Calculate the number of documents to retrieve
+        limit = (skip + length) - skip
+
         session = request.app.state.r_session.protected_session(
             request, response, 0)
 
@@ -498,6 +522,27 @@ async def get_pivot_all(request: Request, response: Response):
                     "_id": "$code",
                     "totalValue": {"$sum": "$total"}
                 }
+            },
+            {
+                "$count": "totalDocuments"  # Добавляем оператор $count
+            }
+        ]
+
+        documents_count = await data_colection.aggregate(pipeline).next()
+        documents_count = documents_count.get("totalDocuments", 0)
+
+        pipeline = [
+            {
+                "$group": {
+                    "_id": "$code",
+                    "totalValue": {"$sum": "$total"}
+                }
+            },
+            {
+                "$skip": skip  # Добавляем операцию skip в конвейер
+            },
+            {
+                "$limit": limit  # Ограничиваем количество результатов
             }
         ]
 
@@ -507,7 +552,7 @@ async def get_pivot_all(request: Request, response: Response):
         async for result in data_colection.aggregate(pipeline):
             documents.append(result)
 
-        documents_count = len(documents)
+        page_count = ceil(documents_count / length)
 
         log_event(request,
                   response,
@@ -516,7 +561,7 @@ async def get_pivot_all(request: Request, response: Response):
                   'Successfully')  # Log
 
         # Success
-        return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count}})
+        return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count, "page_count": page_count}})
     except Exception as e:
         log_event(request,
                   response,
@@ -529,12 +574,36 @@ async def get_pivot_all(request: Request, response: Response):
 
 # Получить сводную таблицу для всех клиентов
 @router.get('/pivot/{code}')
-async def get_pivot_all(request: Request, response: Response, code: str):
+async def get_pivot_all(request: Request, response: Response, code: str, page: int = 0, length: int = 10, sorted: int = 1):
     origin = request.headers.get('origin')
-    if (origin) :
+    if (origin):
         response.headers.setdefault('Access-Control-Allow-Origin', origin)
-    
+
+    if ((page < 0) or (length < 0)):
+        log_event(request,
+                  response,
+                  f'/pivot/{code}',
+                  {'page': page, 'length': length, 'sorted': sorted},
+                  'Page or length out of range')  # Log
+        # Exception
+        return JSONResponse(content={"message": "Page or length out of range"}, status_code=403)
+
+    if ((sorted > 1) or (sorted < -1) or (sorted == 0)):
+        log_event(request,
+                  response,
+                  f'/pivot/{code}',
+                  {'page': page, 'length': length, 'sorted': sorted},
+                  'sorted out of range (1 - ASCENDING, -1 - DESCENDING)')  # Log
+        # Exception
+        return JSONResponse(content={"message": "sorted out of range (1 - ASCENDING, -1 - DESCENDING)"}, status_code=403)
+
     try:
+        # Calculate the number of documents to skip
+        skip = (page * length)
+
+        # Calculate the number of documents to retrieve
+        limit = (skip + length) - skip
+
         session = request.app.state.r_session.protected_session(
             request, response, 0)
 
@@ -565,6 +634,32 @@ async def get_pivot_all(request: Request, response: Response, code: str):
                     "_id": "$code",
                     "totalValue": {"$sum": "$total"}
                 }
+            },
+            {
+                "$count": "totalDocuments"  # Добавляем оператор $count
+            }
+        ]
+
+        documents_count = await data_colection.aggregate(pipeline).next()
+        documents_count = documents_count.get("totalDocuments", 0)
+
+        pipeline = [
+            {
+                "$match": {
+                    "code": code  # Only include documents with category
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$code",
+                    "totalValue": {"$sum": "$total"}
+                }
+            },
+            {
+                "$skip": skip  # Добавляем операцию skip в конвейер
+            },
+            {
+                "$limit": limit  # Ограничиваем количество результатов
             }
         ]
 
@@ -574,7 +669,7 @@ async def get_pivot_all(request: Request, response: Response, code: str):
         async for result in data_colection.aggregate(pipeline):
             documents.append(result)
 
-        documents_count = len(documents)
+        page_count = ceil(documents_count / length)
 
         log_event(request,
                   response,
@@ -583,7 +678,7 @@ async def get_pivot_all(request: Request, response: Response, code: str):
                   'Successfully')  # Log
 
         # Success
-        return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count}})
+        return JSONResponse(content={"message": "Successfully", "data": {"documents": documents, "documents_count": documents_count, "page_count": page_count}})
     except Exception as e:
         log_event(request,
                   response,
